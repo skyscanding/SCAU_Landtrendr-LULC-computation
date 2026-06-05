@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Earth Engine credentials should never be committed
+.config/earthengine/
+
+# GEE_LULC_SVM-specific: keep folders, ignore contents
+data/*
+!data/.gitkeep
+!data/README.md
+outputs/*
+!outputs/.gitkeep
+!outputs/README.md
+
+# Large rasters & vector products
+*.tif
+*.tiff
+*.tfw
+*.aux.xml
+*.shp
+*.shx
+*.dbf
+*.cpg
+*.prj
+*.qpj
+
+# Allow tiny sample files if you actually want to commit them
+!data/sample_*.tif
+!data/sample_*.shp
