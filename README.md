@@ -90,12 +90,17 @@ feed downstream ecosystem-service computations in the parent repo.
 5. **Choose output mode.** `--output-mode local` downloads GeoTIFFs directly to `outputs/` via `getDownloadURL` (cap: ~32 MiB per request: fine for single-band AOI-sized classifications). For larger AOIs, use `--output-mode drive` to batch-export to your Google Drive instead.
 
 6. **Verify outputs.**
-   ```python
-   import rasterio
-   with rasterio.open("outputs/2014_Landsat7_SR_Classification_SVM_Best.tif") as src:
-       print(src.profile)
-   ```
-   Expect CRS `EPSG:32649`, dtype `uint8`, class codes in `{1,2,3,4,5}`. See `docs/setup_instructions.md` for troubleshooting common issues (429 rate limits, download size caps, missing samples).
+    ```python
+    import rasterio
+    with rasterio.open("outputs/2014_Landsat7_SR_Classification_SVM_Best.tif") as src:
+        print(src.profile)
+    ```
+    Expect dtype `uint8`, class codes in `{1,2,3,4,5}`. The CRS defaults to
+    `EPSG:32649` (UTM zone 49N, suitable for the Shaoguan / northern Guangdong
+    study area). For other regions, change the `crs` parameter in the export
+    call to match your local UTM zone (e.g. `EPSG:32650` for zone 50N).
+    See `docs/setup_instructions.md` for troubleshooting common issues (429
+    rate limits, download size caps, missing samples).
 
 ## Quick assessment of the original scripts
 

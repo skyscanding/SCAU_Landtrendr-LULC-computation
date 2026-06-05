@@ -50,15 +50,26 @@ The original JS workflow defines training points as Geometry Imports
 inside the Code Editor. That doesn't transfer cleanly to scripts. The
 simplest path:
 
-1. Open https://code.earthengine.google.com
-2. Run `gee_scripts/samples/training_samples.js` once.
-3. In the Code Editor Console, for each FeatureCollection (water,
-   builtUp, unrestoredLand, restoring, stableVegetation), use
-   `Export.table.toAsset({collection: water, assetId: 'users/YOU/water'})`.
-4. Run the export tasks.
+1. Prepare shapefiles. For each class (water, builtUp, unrestoredLand,
+   restoring, stableVegetation) you need a point shapefile containing at
+   minimum these files: `.shp`, `.shx`, `.dbf`, `.prj`. If your AOI is
+   a polygon, prepare it the same way.
 
-The same pipeline now works with `--water-asset users/YOU/water` (etc.)
-in step 5 below.
+   **Important:** GEE requires geographic coordinates (WGS84 / EPSG:4326).
+   Do NOT use a projected coordinate system (e.g. UTM, Albers). If your
+   data is in a projected CRS, reproject to EPSG:4326 in QGIS or ArcGIS
+   before uploading. Uploading projected coordinates will cause the asset
+   ingestion to fail or silently misplace your points.
+
+2. Open https://code.earthengine.google.com and drag each shapefile's
+   `.shp` (plus its sidecar files) into the Assets tab, or use the
+   **Assets > New > Table Upload** menu. Select all required sidecar
+   files (`.shp`, `.shx`, `.dbf`, `.prj`) together.
+
+3. Once uploaded, note each asset path (e.g. `users/YOU/water`).
+
+4. The same pipeline now works with `--water-asset users/YOU/water` (etc.)
+   in step 5 below.
 
 Alternative: keep training points under version control as a GeoJSON in
 this repo's `data/` folder, and adapt `01_load_samples.py` to read it
@@ -98,8 +109,10 @@ with rasterio.open("outputs/2014_Landsat7_SR_Classification_SVM_Best.tif") as sr
 PY
 ```
 
-You should see CRS `EPSG:32649`, dtype `uint8`, and class codes drawn
-from `{1, 2, 3, 4, 5}` plus any nodata value.
+You should see dtype `uint8` and class codes drawn from `{1, 2, 3, 4, 5}`
+plus any nodata value. The default CRS is `EPSG:32649` (UTM zone 49N,
+suitable for the Shaoguan area). Change the `crs` parameter in the export
+call to match your study region (e.g. `EPSG:32650` for zone 50N).
 
 ## Troubleshooting
 
