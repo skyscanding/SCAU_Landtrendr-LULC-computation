@@ -11,105 +11,105 @@ feed downstream ecosystem-service computations in the parent repo.
 
 ## What's in here
 
-```
-GEE_LULC_SVM/
-├── README.md                       # this file
-├── requirements.txt                # Python dependencies
-├── docs/
-│   ├── setup_instructions.md       # one-time auth + local install
-│   ├── assessment.md               # code review of the original JS
-│   └── integration_with_parent.md  # how this fits into the SCAU repo
-├── gee_scripts/                    # original JS — paste into GEE Code Editor
-│   ├── samples/
-│   │   └── training_samples.js
-│   ├── single_year/
-│   │   ├── landsat_svm.js
-│   │   └── sentinel2_svm.js
-│   └── multi_year/
-│       ├── lulc_multiyear_strict.js
-│       └── lulc_multiyear_lenient.js
-├── python/                         # local Python equivalents
-│   ├── 00_authenticate.py
-│   ├── 01_load_samples.py
-│   ├── 02_landsat_svm_multiyear.py # the strict pipeline, translated
-│   ├── 03_sentinel2_svm.py
-│   ├── lib/
-│   │   ├── __init__.py
-│   │   ├── cloud_mask.py
-│   │   ├── composites.py
-│   │   ├── indices.py
-│   │   ├── io_utils.py
-│   │   └── svm_classify.py
-│   └── notebooks/
-│       └── walkthrough.ipynb       # end-to-end demo
-├── data/                           # gitignored except .gitkeep — your local inputs
-└── outputs/                        # gitignored except .gitkeep — local GeoTIFFs
-```
+| Path | Purpose |
+|---|---|
+| `gee_scripts/samples/training_samples.js` | Hand-digitized training points (5 classes: water, builtUp, unrestoredLand, restoring, stableVegetation) plus the AOI FeatureCollection. Paste this first in the Code Editor to create the Geometry Imports. |
+| `gee_scripts/single_year/landsat_svm.js` | Single-year Landsat 7/8/9 pipeline (SR + TOA, year 2014). Builds median composites with cloud masking, computes 6 spectral indices, classifies with RBF-SVM, exports 4 GeoTIFFs. |
+| `gee_scripts/single_year/sentinel2_svm.js` | Single-year Sentinel-2 pipeline (year 2018) using Cloud Score+ for cloud filtering. Links S2 SR with the CS+ collection, applies 0.30 clear threshold, classifies at 10 m resolution. |
+| `gee_scripts/multi_year/lulc_multiyear_strict.js` | Multi-year production pipeline (2000–2024). Adds GLCM texture features, class-balanced sampling, z-score normalization, and picks the best sensor per year by OA + Kappa. Discards years below threshold. |
+| `gee_scripts/multi_year/lulc_multiyear_lenient.js` | Relaxed variant (2023–2026). No texture or balancing; tuned gamma=0.1, cost=10. Faster for recent years where ground samples don't warrant the heavy pipeline. |
+| `python/00_authenticate.py` | One-time GEE authentication helper. Opens a browser, writes credentials to `~/.config/earthengine/`. Run once per machine. |
+| `python/01_load_samples.py` | Loads training points from GEE assets or local GeoJSON. Merges per-class FeatureCollections with numeric `lc` codes (1–5). |
+| `python/02_landsat_svm_multiyear.py` | Local Python driver for the strict multi-year pipeline. Args: `--start-year`, `--end-year`, `--output-mode local|drive`. Outputs to `outputs/`. |
+| `python/03_sentinel2_svm.py` | Local Python driver for single-year Sentinel-2 classification. |
+| `python/lib/` | Shared library: `cloud_mask.py`, `composites.py`, `indices.py`, `io_utils.py`, `svm_classify.py`. Each helper exists exactly once — no duplication across drivers. |
+| `python/notebooks/walkthrough.ipynb` | End-to-end Jupyter notebook demonstrating the full workflow. |
+| `docs/setup_instructions.md` | Step-by-step: GCP project setup, dependency install, authentication, sample upload, running, verifying outputs, and troubleshooting. |
+| `docs/assessment.md` | Detailed code review of all 5 JS scripts — what's solid, what could be tighter, and cross-cutting suggestions for future iterations. |
+| `docs/integration_with_parent.md` | How to add this module as a submodule or vendored folder in the parent ecosystem-service repo, plus data-flow diagram and `.gitignore` recommendations. |
+| `data/` | Gitignored except `.gitkeep`. Place your local training samples (GeoJSON, Shapefile) here. |
+| `outputs/` | Gitignored except `.gitkeep`. Classification GeoTIFFs land here when using `--output-mode local`. |
+| `requirements.txt` | Python dependencies (`earthengine-api`, `rasterio`, `geopandas`). |
 
 ## Two ways to run
 
 ### A. GEE Code Editor (original workflow)
 
-1. Open https://code.earthengine.google.com
-2. Create a new script.
-3. Paste the contents of `gee_scripts/samples/training_samples.js` to create
-   the Geometry Imports.
-4. Paste the contents of one of:
-   - `gee_scripts/single_year/landsat_svm.js`
-   - `gee_scripts/single_year/sentinel2_svm.js`
-   - `gee_scripts/multi_year/lulc_multiyear_strict.js`
-   - `gee_scripts/multi_year/lulc_multiyear_lenient.js`
-5. Hit **Run**, then check the Tasks panel to launch the Drive exports.
+1. **Open the Code Editor** at https://code.earthengine.google.com and create a new script.
 
-The classification GeoTIFFs land in your Google Drive — same as the
-original workflow.
+2. **Import training samples.** Paste the entire contents of `gee_scripts/samples/training_samples.js`. This creates 5 FeatureCollections (`water`, `builtUp`, `unrestoredLand`, `restoring`, `stableVegetation`) and the AOI (`cc`, `table`) as Geometry Imports in the editor sidebar.
+
+3. **Pick and paste a classification script.** Below the imports block, paste one of:
+   - `gee_scripts/single_year/landsat_svm.js` — Landsat 7/8/9, single year (2014), 12 bands
+   - `gee_scripts/single_year/sentinel2_svm.js` — Sentinel-2, single year (2018), 12 bands
+   - `gee_scripts/multi_year/lulc_multiyear_strict.js` — Landsat, multi-year (2000–2024), 15 features with GLCM textures
+   - `gee_scripts/multi_year/lulc_multiyear_lenient.js` — Landsat, multi-year (2023–2026), 12 features, tuned hyperparameters
+
+4. **Run the script.** Click **Run**. The console will print composite generation progress, per-sensor SVM accuracy (OA and Kappa), and a per-year best-sensor selection log. Classified layers appear on the map.
+
+5. **Export results.** Open the **Tasks** tab. Each successfully classified year/sensor combo generates one export task. Click **Run** on each to launch the Drive export. GeoTIFFs land in your Google Drive folder (single-year scripts use `ZXY研究区监督土地分类_Landsa新用SVM` and `监督土地分类Sentinel版`; multi-year scripts use `Journal_landsat+SVM`).
 
 ### B. Local Python (recommended for repeatable runs)
 
-```bash
-# 1. From the parent repo root, install dependencies
-cd GEE_LULC_SVM
-python -m venv .venv && source .venv/bin/activate   # or use uv / conda
-pip install -r requirements.txt
+1. **Install dependencies.**
+   ```bash
+   cd GEE_LULC_SVM
+   python -m venv .venv && source .venv/bin/activate   # or uv / conda
+   pip install -r requirements.txt
+   ```
 
-# 2. One-time GEE auth — opens a browser
-python python/00_authenticate.py --project YOUR_GCP_PROJECT_ID
+2. **Authenticate with Earth Engine (once per machine).** This opens a browser for OAuth.
+   ```bash
+   python python/00_authenticate.py --project YOUR_GCP_PROJECT_ID
+   ```
+   Your GCP project must have the Earth Engine API enabled. See `docs/setup_instructions.md` for the full walkthrough.
 
-# 3. Run the multi-year strict pipeline (local download mode)
-python python/02_landsat_svm_multiyear.py \
-    --project YOUR_GCP_PROJECT_ID \
-    --start-year 2000 --end-year 2024 \
-    --aoi-asset projects/ee-skyscanding/assets/Final_Reprojected_zxy \
-    --water-asset users/yourname/water \
-    --builtup-asset users/yourname/builtUp \
-    --unrestored-asset users/yourname/unrestoredLand \
-    --restoring-asset users/yourname/restoring \
-    --stableveg-asset users/yourname/stableVegetation \
-    --output-mode local
-```
+3. **Upload training samples as GEE assets (first time only).** The JS imports don't carry over to Python. Paste `gee_scripts/samples/training_samples.js` into the Code Editor, then use `Export.table.toAsset()` for each FeatureCollection (water, builtUp, unrestoredLand, restoring, stableVegetation). Run the export tasks, then note each asset path (e.g. `users/YOU/water`).
 
-Output GeoTIFFs are written to `outputs/` and are immediately consumable by
-the rasterio / geopandas pipelines in the parent repo. For very large AOIs
-where `getDownloadURL`'s 32 MiB cap is exceeded, pass `--output-mode drive`
-to fall back to the Drive batch-export path.
+4. **Run the multi-year strict pipeline.**
+   ```bash
+   python python/02_landsat_svm_multiyear.py \
+       --project YOUR_GCP_PROJECT_ID \
+       --start-year 2000 --end-year 2024 \
+       --aoi-asset projects/ee-skyscanding/assets/Final_Reprojected_zxy \
+       --water-asset users/YOU/water \
+       --builtup-asset users/YOU/builtUp \
+       --unrestored-asset users/YOU/unrestoredLand \
+       --restoring-asset users/YOU/restoring \
+       --stableveg-asset users/YOU/stableVegetation \
+       --output-mode local
+   ```
+   The script loops through each year, builds composites, adds indices and textures, normalizes, classifies, evaluates accuracy, picks the best sensor, and exports. A progress log prints to stdout with per-year OA and Kappa scores.
 
-See `docs/setup_instructions.md` for the detailed auth walkthrough.
+5. **Choose output mode.** `--output-mode local` downloads GeoTIFFs directly to `outputs/` via `getDownloadURL` (cap: ~32 MiB per request — fine for single-band AOI-sized classifications). For larger AOIs, use `--output-mode drive` to batch-export to your Google Drive instead.
+
+6. **Verify outputs.**
+   ```python
+   import rasterio
+   with rasterio.open("outputs/2014_Landsat7_SR_Classification_SVM_Best.tif") as src:
+       print(src.profile)
+   ```
+   Expect CRS `EPSG:32649`, dtype `uint8`, class codes in `{1,2,3,4,5}`. See `docs/setup_instructions.md` for troubleshooting common issues (429 rate limits, download size caps, missing samples).
 
 ## Quick assessment of the original scripts
 
-A full code review lives in `docs/assessment.md`, but the short version:
+A full code review lives in `docs/assessment.md`. Key takeaways:
 
-**Strengths.** Comprehensive sensor coverage (L7 / L8 / L9 SR+TOA, S2 with
-Cloud Score+). The multi-year "strict" pipeline is genuinely strong — GLCM
-texture features, class-balanced sampling, per-band z-score normalization,
-and a best-per-year selection gated on OA + Kappa.
+**Strengths across all scripts:**
+- Comprehensive sensor coverage — Landsat 7/8/9 SR and TOA (30 m), Sentinel-2 SR with Cloud Score+ (10 m).
+- The multi-year strict pipeline (`lulc_multiyear_strict.js`) is genuinely publication-grade: GLCM texture features (Contrast, Entropy, Homogeneity) from NDVI, class-balanced sampling that equalizes each class to the smallest, per-band z-score normalization for RBF-SVM, a clean 70/30 train/test split with fixed seed, and a best-per-year selection gated on OA + Kappa. Years where both metrics fall below 0.7 are discarded and not exported.
+- The lenient variant (`lulc_multiyear_lenient.js`) uses tuned hyperparameters (gamma=0.1, cost=10) that are more defensible for normalized inputs than the strict version's gamma=1.
 
-**Things that were worth tightening.** The single-year scripts had a lot of
-duplicated code (cloud masks, indices, SVM training), Chinese / English
-console output was inconsistent, and heavy `getInfo()` use inside loops
-limits scalability. Those concerns shaped how the Python `lib/` is
-factored — every helper exists in exactly one place, and `getInfo()`
-calls are only used where the value is actually needed client-side.
+**Areas tightened in the Python port:**
+- Shared helpers (`cloud_mask.py`, `indices.py`, `svm_classify.py`) replace ~4 duplicated copies across the JS files.
+- `getInfo()` calls are kept only where the value drives client-side logic; the rest stays server-side for efficiency.
+- CLI argument parsing replaces hardcoded years and asset paths, making batch re-runs trivial.
+
+**Known trade-offs (documented, not fixed):**
+- The single-year scripts use overlapping train/test sets (different random seeds), which yields optimistic accuracy estimates. The strict multi-year pipeline uses a proper 70/30 split with no overlap.
+- Sample filtering checks only the first band for null values; if subsequent bands are masked the sample still slips through. The Python `lib/svm_classify.py` keeps this behavior to match the JS output exactly.
+- Landsat 7 SLC-off gaps (post-2003) are tolerated by median compositing but may degrade accuracy in 2003–2012. Consider adding Landsat 5 TM for those years.
+- The commented-out GapFill block in `sentinel2_svm.js` (~70 lines) is preserved for reference but not active.
 
 ## License
 
