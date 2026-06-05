@@ -53,7 +53,7 @@ feed downstream ecosystem-service computations in the parent repo.
 
 4. **Run the script.** Click **Run**. The console will print composite generation progress, per-sensor SVM accuracy (OA and Kappa), and a per-year best-sensor selection log. Classified layers appear on the map.
 
-5. **Export results.** Open the **Tasks** tab. Each successfully classified year/sensor combo generates one export task. Click **Run** on each to launch the Drive export. GeoTIFFs land in your Google Drive folder (single-year scripts use `ZXY研究区监督土地分类_Landsa新用SVM` and `监督土地分类Sentinel版`; multi-year scripts use `Journal_landsat+SVM`).
+5. **Export results.** Open the **Tasks** tab. Each successfully classified year/sensor combo generates one export task. Click **Run** on each to launch the Drive export. GeoTIFFs land in your Google Drive folder (single-year scripts use `Landsat_SVM_Classification` and `Sentinel_SVM_Classification`; multi-year scripts use `Journal_landsat+SVM`).
 
 ### B. Local Python (recommended for repeatable runs)
 
