@@ -113,5 +113,18 @@ calls are only used where the value is actually needed client-side.
 
 ## License
 
-Add a license at the parent-repo root (MIT is a sensible default for
-academic work) — this submodule inherits it.
+This project is licensed under a proprietary license with an Academic Evaluation
+Exception for HKU and SCAU. See [LICENSE](./LICENSE) for details.
+
+## 中文说明
+
+本项目基于 Google Earth Engine 平台，使用 SVM（支持向量机，RBF 核）对大宝山矿区
+进行土地利用/土地覆盖（LULC）监督分类。支持 Landsat 7/8/9（SR 与 TOA）和
+Sentinel-2 影像，提供单年与多年两种运行模式。
+
+**多年严格版**（`lulc_multiyear_strict.js`）为期刊产出设计，包含 GLCM 纹理特征、
+类别均衡采样、z-score 归一化和基于 OA+Kappa 的最优年份筛选。
+
+**两种运行方式**：
+- 在 GEE Code Editor 中粘贴 `gee_scripts/` 下的 JS 脚本运行
+- 使用 `python/` 下的 Python 脚本在本地命令行运行，输出 GeoTIFF 至 `outputs/`
