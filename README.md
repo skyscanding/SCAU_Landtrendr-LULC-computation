@@ -11,25 +11,31 @@ feed downstream ecosystem-service computations in the parent repo.
 
 ## What's in here
 
-| Path | Purpose |
-|---|---|
-| `gee_scripts/samples/training_samples.js` | Hand-digitized training points (5 classes: water, builtUp, unrestoredLand, restoring, stableVegetation) plus the AOI FeatureCollection. Paste this first in the Code Editor to create the Geometry Imports. |
-| `gee_scripts/single_year/landsat_svm.js` | Single-year Landsat 7/8/9 pipeline (SR + TOA, year 2014). Builds median composites with cloud masking, computes 6 spectral indices, classifies with RBF-SVM, exports 4 GeoTIFFs. |
-| `gee_scripts/single_year/sentinel2_svm.js` | Single-year Sentinel-2 pipeline (year 2018) using Cloud Score+ for cloud filtering. Links S2 SR with the CS+ collection, applies 0.30 clear threshold, classifies at 10 m resolution. |
-| `gee_scripts/multi_year/lulc_multiyear_strict.js` | Multi-year production pipeline (2000–2024). Adds GLCM texture features, class-balanced sampling, z-score normalization, and picks the best sensor per year by OA + Kappa. Discards years below threshold. |
-| `gee_scripts/multi_year/lulc_multiyear_lenient.js` | Relaxed variant (2023–2026). No texture or balancing; tuned gamma=0.1, cost=10. Faster for recent years where ground samples don't warrant the heavy pipeline. |
-| `python/00_authenticate.py` | One-time GEE authentication helper. Opens a browser, writes credentials to `~/.config/earthengine/`. Run once per machine. |
-| `python/01_load_samples.py` | Loads training points from GEE assets or local GeoJSON. Merges per-class FeatureCollections with numeric `lc` codes (1–5). |
-| `python/02_landsat_svm_multiyear.py` | Local Python driver for the strict multi-year pipeline. Args: `--start-year`, `--end-year`, `--output-mode local|drive`. Outputs to `outputs/`. |
-| `python/03_sentinel2_svm.py` | Local Python driver for single-year Sentinel-2 classification. |
-| `python/lib/` | Shared library: `cloud_mask.py`, `composites.py`, `indices.py`, `io_utils.py`, `svm_classify.py`. Each helper exists exactly once — no duplication across drivers. |
-| `python/notebooks/walkthrough.ipynb` | End-to-end Jupyter notebook demonstrating the full workflow. |
-| `docs/setup_instructions.md` | Step-by-step: GCP project setup, dependency install, authentication, sample upload, running, verifying outputs, and troubleshooting. |
-| `docs/assessment.md` | Detailed code review of all 5 JS scripts — what's solid, what could be tighter, and cross-cutting suggestions for future iterations. |
-| `docs/integration_with_parent.md` | How to add this module as a submodule or vendored folder in the parent ecosystem-service repo, plus data-flow diagram and `.gitignore` recommendations. |
-| `data/` | Gitignored except `.gitkeep`. Place your local training samples (GeoJSON, Shapefile) here. |
-| `outputs/` | Gitignored except `.gitkeep`. Classification GeoTIFFs land here when using `--output-mode local`. |
-| `requirements.txt` | Python dependencies (`earthengine-api`, `rasterio`, `geopandas`). |
+**gee_scripts/** — original JS, paste into GEE Code Editor
+- `samples/training_samples.js` — hand-digitized training points (5 classes: water, builtUp, unrestoredLand, restoring, stableVegetation) plus the AOI FeatureCollection. Paste this first to create the Geometry Imports.
+- `single_year/landsat_svm.js` — Landsat 7/8/9 single year (2014), SR + TOA median composites, 6 spectral indices, RBF-SVM, exports 4 GeoTIFFs.
+- `single_year/sentinel2_svm.js` — Sentinel-2 single year (2018), Cloud Score+ masking, 10 m resolution.
+- `multi_year/lulc_multiyear_strict.js` — production pipeline (2000–2024), GLCM textures, class-balanced sampling, z-score normalization, best per year by OA + Kappa.
+- `multi_year/lulc_multiyear_lenient.js` — relaxed variant (2023–2026), no texture or balancing, gamma=0.1, cost=10.
+
+**python/** — local Python equivalents
+- `00_authenticate.py` — one-time GEE auth helper, opens browser, writes credentials.
+- `01_load_samples.py` — loads training points from GEE assets or local GeoJSON.
+- `02_landsat_svm_multiyear.py` — driver for the strict multi-year pipeline.
+- `03_sentinel2_svm.py` — driver for single-year Sentinel-2 classification.
+- `lib/` — shared helpers: `cloud_mask.py`, `composites.py`, `indices.py`, `io_utils.py`, `svm_classify.py`. Each helper exists exactly once.
+- `notebooks/walkthrough.ipynb` — end-to-end Jupyter demo.
+
+**docs/**
+- `setup_instructions.md` — step-by-step: GCP project, dependencies, auth, running, verifying, troubleshooting.
+- `assessment.md` — code review of all 5 JS scripts.
+- `integration_with_parent.md` — how to add this as a submodule or vendored folder.
+
+**data/** — gitignored except `.gitkeep`. Place local training samples here.
+
+**outputs/** — gitignored except `.gitkeep`. Classification GeoTIFFs land here with `--output-mode local`.
+
+**requirements.txt** — Python dependencies (`earthengine-api`, `rasterio`, `geopandas`).
 
 ## Two ways to run
 
