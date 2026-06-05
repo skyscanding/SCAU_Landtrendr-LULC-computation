@@ -1,4 +1,4 @@
-// =============================================================================
+
 // FILE:       lulc_multiyear_strict.js
 // PURPOSE:    Multi-year Landsat SVM LULC pipeline with rigorous quality
 //             controls — intended for journal/publication outputs.
@@ -20,28 +20,28 @@
 // MODEL:      libsvm, RBF kernel, gamma=1, cost=100
 // BANDS:      6 optical + 6 indices + 3 textures = 15 features
 // SCALE:      30 m, CRS EPSG:32649
-// =============================================================================
 
-// ============================================================
+
+
 // 0) Basic setup and AOI
-// ============================================================
+
 var cc = ee.FeatureCollection("projects/ee-skyscanding/assets/Final_Reprojected_zxy");
 Map.addLayer(cc, {color: 'orange'}, 'AOI Boundary');
 Map.centerObject(cc, 13);
 
-// ===== Study period settings =====
+// Study period settings
 var startYear = 2000;
 var endYear   = 2024;
 var cloudThreshold = 20;
 var exportFolder = 'Journal_landsat+SVM';
 
-// ===== Minimum threshold: discard if BOTH OA and Kappa below these =====
+// Minimum threshold: discard if BOTH OA and Kappa below these
 var OA_THRESHOLD    = 0.7;
 var KAPPA_THRESHOLD = 0.7;
 
-// ============================================================
+
 // Utility functions
-// ============================================================
+
 function addAllIndices(image) {
   var ndvi = image.normalizedDifference(['NIR', 'Red']).rename('NDVI');
   var evi = image.expression(
@@ -58,9 +58,9 @@ function addAllIndices(image) {
   return image.addBands([ndvi, evi, ndwi, ndbi, mndwi, fvc]);
 }
 
-// ============================================================
+
 // [NEW] GLCM texture features from NDVI
-// ============================================================
+
 function addTextureFeatures(image) {
   var gray = image.select('NDVI').multiply(1000).toInt16();
   var glcm = gray.glcmTexture({size: 3});
@@ -70,9 +70,9 @@ function addTextureFeatures(image) {
   return image.addBands([contrast, entropy, homogeneity]);
 }
 
-// ============================================================
+
 // [NEW] Class-balanced sampling — equalize to smallest class
-// ============================================================
+
 function balanceSamples(samples, classProperty, nClasses) {
   var classList = ee.List.sequence(1, nClasses);
   var classCounts = classList.map(function(c) {
@@ -88,9 +88,9 @@ function balanceSamples(samples, classProperty, nClasses) {
   return balanced;
 }
 
-// ============================================================
+
 // Band normalization for RBF-SVM
-// ============================================================
+
 function normalizeImage(image, bands, region) {
   var bandsEE = ee.List(bands);
   var meanDict = image.select(bandsEE).reduceRegion({
@@ -117,9 +117,9 @@ function normalizeImage(image, bands, region) {
   return ee.ImageCollection(bandImages).toBands().rename(bandsEE);
 }
 
-// ============================================================
+
 // Training samples (Geometry Imports)
-// ============================================================
+
 var water_lc = water.map(function(f){ return f.set('lc', 1); });
 var builtUp_lc = builtUp.map(function(f){ return f.set('lc', 2); });
 var unrestoredLand_lc = unrestoredLand.map(function(f){ return f.set('lc', 3); });
@@ -134,9 +134,9 @@ var classNames = water_lc
 print("Total sample count (merged):", classNames.size());
 print("Class distribution:", classNames.aggregate_histogram('lc'));
 
-// ============================================================
+
 // Cloud masking
-// ============================================================
+
 function cloudMask(image, sensor) {
   var qa = image.select('QA_PIXEL');
   var fill         = qa.bitwiseAnd(1 << 0).neq(0);
@@ -188,10 +188,10 @@ function cloudMaskTOA(image, sensor) {
     .select(['Blue','Green','Red','NIR','SWIR1','SWIR2','LST']);
 }
 
-// ============================================================
+
 // Annual composite functions
 // L8/L9 collections only queried for year >= 2013
-// ============================================================
+
 function getLandsatSRImage(yearNum, cloudThreshold, region) {
   var nodata = -9999;
   var bandTemplate = ['Blue','Green','Red','NIR','SWIR1','SWIR2','LST'];
@@ -270,19 +270,19 @@ function getLandsatTOAImage(yearNum, cloudThreshold, region) {
   return result;
 }
 
-// ============================================================
+
 // [UPDATED] Classification bands — now includes 3 texture features
-// ============================================================
+
 var classificationBands = [
   'Blue','Green','Red','NIR','SWIR1','SWIR2',
   'NDVI','EVI','NDWI','NDBI','MNDWI','FVC',
   'Texture_Contrast','Texture_Entropy','Texture_Homogeneity'
 ];
 
-// ============================================================
+
 // SVM classification core
 // Returns {image, oa, kappa} or null if dummy/insufficient samples
-// ============================================================
+
 function trainAndClassifySVM(imageWithBands, sensorIdentifier, bandsToClassify,
                              trainingSamples, studyRegion) {
   // Server-side dummy check
@@ -361,9 +361,9 @@ function trainAndClassifySVM(imageWithBands, sensorIdentifier, bandsToClassify,
   };
 }
 
-// ============================================================
+
 // Classification entry point — adds indices + texture
-// ============================================================
+
 function LandsatClassify(sensorNameKey, bandsForClassification,
                          trainingSamplesFC, aoiRegion, landsatCompositesDict) {
   var imageToClassify = ee.Image(landsatCompositesDict.get(sensorNameKey));
@@ -387,14 +387,14 @@ function LandsatClassify(sensorNameKey, bandsForClassification,
   );
 }
 
-// ============================================================
+
 // [NEW] Multi-year loop with BEST-PER-YEAR selection
 // For each year: classify all available sensors, compare accuracy,
 // export only the single best result (highest OA+Kappa composite score)
-// ============================================================
+
 for (var y = startYear; y <= endYear; y++) {
   var yStr = y.toString();
-  print("========== Processing year: " + yStr + " ==========");
+  print("Processing year: " + yStr);
 
   // Generate composites (integer year passed directly)
   var sr_dict  = getLandsatSRImage(y, cloudThreshold, cc);
@@ -469,4 +469,4 @@ for (var y = startYear; y <= endYear; y++) {
   });
 }
 
-print("===== All years processed. Check Tasks panel. =====");
+print("All years processed. Check Tasks panel.");

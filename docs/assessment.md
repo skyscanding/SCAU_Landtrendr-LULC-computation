@@ -85,8 +85,6 @@ sklearn default and `0.1` is in the same neighborhood.
 > already does this; you can mirror the change back to JS by extracting
 > a config block.
 
----
-
 ## Cross-cutting suggestions
 
 1. **One source of truth for shared helpers.** `addAllIndices`, the

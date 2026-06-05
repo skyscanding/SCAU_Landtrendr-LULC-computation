@@ -53,8 +53,6 @@ fresh clones, and the parent repo only pins a specific commit.
 > **Option 1**. If you're collaborating with classmates and they're
 > already comfortable with submodules, switch to Option 2.
 
----
-
 ## How the data flows between the two
 
 ```

@@ -1,4 +1,3 @@
-// =============================================================================
 // FILE:       landsat_svm.js
 // PURPOSE:    Single-year Landsat 7/8/9 SVM LULC classification (SR + TOA).
 // SOURCE:     Originally `Landsat_SVM1.js`
@@ -15,7 +14,6 @@
 // BANDS:      Blue, Green, Red, NIR, SWIR1, SWIR2 + NDVI, EVI, NDWI, NDBI,
 //             MNDWI, FVC (12 features total)
 // SCALE:      30 m, CRS EPSG:32649
-// =============================================================================
 
 // 0) 基础设置与 AOI
 var cc = ee.FeatureCollection("projects/ee-skyscanding/assets/Final_Reprojected_zxy");
@@ -321,7 +319,7 @@ function trainAndClassifySVM(imageWithBands, sensorIdentifier, bandsToClassify, 
     classProperty: 'lc',//geometryimports里面调property的，由property决定
     inputProperties: bandsToClassify
   });
-  // --- SVM 参数修改结束 ---
+  // SVM 参数修改结束
 
   var classifiedImage = imageWithBands.select(bandsToClassify).classify(classifier).clip(studyRegion.geometry());
 
@@ -379,22 +377,22 @@ function LandsatClassify(sensorNameKey, // 例如 'Landsat7_SR'
 }
 
 
-print("--- 开始生成 " + year + " 年 Landsat SR 合成影像 ---");
+print("开始生成 " + year + " 年 Landsat SR 合成影像");
 var landsat_SR_Images_Dict = getLandsatSRImage(startDate, cloudThreshold, cc);
-print("--- " + year + " 年 Landsat SR 合成影像生成完毕 ---", landsat_SR_Images_Dict);
+print(year + " 年 Landsat SR 合成影像生成完毕", landsat_SR_Images_Dict);
 
-print("--- 开始生成 " + year + " 年 Landsat TOA 合成影像 ---");
+print("开始生成 " + year + " 年 Landsat TOA 合成影像");
 var landsat_TOA_Images_Dict = getLandsatTOAImage(startDate, cloudThreshold, cc);
-print("--- " + year + " 年 Landsat TOA 合成影像生成完毕 ---", landsat_TOA_Images_Dict);
+print(year + " 年 Landsat TOA 合成影像生成完毕", landsat_TOA_Images_Dict);
 
 // 分类
-print("--- 开始分类 ---");
+print("开始分类");
 var Landsat7_SR_class = LandsatClassify('Landsat7_SR', classificationBands, classNames, cc, landsat_SR_Images_Dict);
 var Landsat89_SR_class = LandsatClassify('Landsat89_SR', classificationBands, classNames, cc, landsat_SR_Images_Dict);
 
 var Landsat7_TOA_class = LandsatClassify('Landsat7_TOA', classificationBands, classNames, cc, landsat_TOA_Images_Dict);
 var Landsat89_TOA_class = LandsatClassify('Landsat89_TOA', classificationBands, classNames, cc, landsat_TOA_Images_Dict);
-print("--- 分类结束 ---");
+print("分类结束");
 
 //批量导出分类结果
 var exportFolder = 'ZXY研究区监督土地分类_Landsa新用SVM'; 

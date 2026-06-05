@@ -96,7 +96,7 @@ def main():
 
     # Year loop
     for year in range(args.start_year, args.end_year + 1):
-        print(f"\n========== Year: {year} ==========")
+        print(f"\nYear: {year}")
         sr_dict = landsat_sr_annual_composite(year, args.cloud_threshold, aoi)
         toa_dict = landsat_toa_annual_composite(year, args.cloud_threshold, aoi)
 
@@ -167,7 +167,7 @@ def main():
                     region=aoi.geometry(),
                 )
 
-    print("\n===== Done. =====")
+    print("\nDone.")
     if args.output_mode == "drive":
         print("Drive export tasks were started. Monitor them at:")
         print("  https://code.earthengine.google.com/tasks")

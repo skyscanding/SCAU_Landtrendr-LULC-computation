@@ -1,4 +1,3 @@
-// =============================================================================
 // FILE:       training_samples.js
 // PURPOSE:    Hand-digitized training points for SVM LULC classification,
 //             organized as 5 GEE Geometry Imports + study-area FeatureCollection.
@@ -15,7 +14,6 @@
 //             classification scripts in this repo will pick them up by name.
 // NOTES:      The `lc` attribute is left empty here — class codes are assigned
 //             by `.map(f => f.set('lc', N))` in each consumer script.
-// =============================================================================
 
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
 var stableVegetation = /* color: #00eb25 */ee.FeatureCollection(

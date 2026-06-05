@@ -1,4 +1,3 @@
-// =============================================================================
 // FILE:       sentinel2_svm.js
 // PURPOSE:    Single-year Sentinel-2 SR SVM LULC classification using
 //             Cloud Score+ for cloud masking.
@@ -16,7 +15,6 @@
 // SCALE:      10 m, CRS EPSG:32649
 // NOTE:       Contains a commented-out linear-fit gap-fill block (kept for
 //             reference); current pipeline takes the unfilled median.
-// =============================================================================
 
 // AOI 设置
 var cc = ee.FeatureCollection("projects/ee-skyscanding/assets/Final_Reprojected_zxy"); 
@@ -173,7 +171,7 @@ function _executeLinearFitAndFill(imgToFill, bandsForFit, fillMedianImage, kerne
     // 条件2: 必须有光学波段需要填充
     return ee.Image(ee.Algorithms.If(
       bandsToFit.length().gt(0),
-      // ----- 条件2为真: bandsToFit 非空 -----
+      // 条件2为真: bandsToFit 非空
       (function() { // IIFE for Condition 2 true branch
         var start = imgDate.advance(-2, 'year');
         var end = imgDate.advance(2, 'year');
@@ -182,7 +180,7 @@ function _executeLinearFitAndFill(imgToFill, bandsForFit, fillMedianImage, kerne
         // 条件3: 必须有填充源影像
         return ee.Image(ee.Algorithms.If(
           fillSourceCollection.size().gt(0),
-          // ----- 条件3为真: fillSourceCollection 非空 -----
+          // 条件3为真: fillSourceCollection 非空
           (function() { // IIFE for Condition 3 true branch
             var fillMedian = fillSourceCollection.median().select(sentinelOpticalBands);
             // 确定 fillMedian 和 img (通过bandsToFit) 之间的共同可用波段
@@ -191,17 +189,17 @@ function _executeLinearFitAndFill(imgToFill, bandsForFit, fillMedianImage, kerne
             // 条件4: 必须有共同波段进行拟合
             return ee.Image(ee.Algorithms.If(
               commonBandsToUse.length().gt(0),
-              // ----- 条件4为真: commonBandsToUse 非空, 执行核心填充 -----
+              // 条件4为真: commonBandsToUse 非空, 执行核心填充
               _executeLinearFitAndFill(img, commonBandsToUse, fillMedian, kernel),
-              // ----- 条件4为假: 没有共同波段，返回原图 -----
+              // 条件4为假: 没有共同波段，返回原图
               img
             ));
           })(), // 立即执行
-          // ----- 条件3为假: fillSourceCollection 为空，返回原图 -----
+          // 条件3为假: fillSourceCollection 为空，返回原图
           img
         ));
       })(), // 立即执行
-      // ----- 条件2为假: bandsToFit 为空，返回原图 -----
+      // 条件2为假: bandsToFit 为空，返回原图
       img
     ));
   })(); // 立即执行
@@ -210,7 +208,7 @@ function _executeLinearFitAndFill(imgToFill, bandsForFit, fillMedianImage, kerne
   return ee.Image(ee.Algorithms.If(
     timeStartObj, // 条件1: timeStartObj 存在 (GEE 服务器端对象)
     filledImageWhenTimeExists, // 如果条件1为真，使用上面定义的计算结果
-    // ----- 条件1为假: timeStartObj 为 null (服务器端判断)，返回原图 -----
+    // 条件1为假: timeStartObj 为 null (服务器端判断)，返回原图
     img
   ));
 }
@@ -369,7 +367,7 @@ function trainAndClassifySVM(imageWithBands, sensorIdentifier, bandsToClassify, 
 
   print('训练样本分区数量 (' + sensorIdentifier + '):', trainingPartition.size());
   print('测试样本分区数量 (' + sensorIdentifier + '):', testingPartition.size());
-  // --- 样本划分修改结束 ---
+  // 样本划分修改结束
 
 
   if (trainingPartition.size().eq(0).getInfo() || testingPartition.size().eq(0).getInfo()) {
@@ -394,7 +392,7 @@ function trainAndClassifySVM(imageWithBands, sensorIdentifier, bandsToClassify, 
     classProperty: 'lc',//geometryimports里面调property的，由property决定
     inputProperties: bandsToClassify
   });
-  // --- SVM 参数修改结束 ---
+  // SVM 参数修改结束
 
   var classifiedImage = imageWithBands.select(bandsToClassify).classify(classifier).clip(studyRegion.geometry());
 
@@ -460,10 +458,10 @@ function performSentinel2Classification(sensorId, bandsForClf, trainingDataFc, s
 
 
 // 8) 生成年度Sentinel-2影像并分类
-print("--- 生成 " + year + " 年 Sentinel-2 SR 合成影像 ---");
+print("生成 " + year + " 年 Sentinel-2 SR 合成影像");
 var sentinel2_SR_images = getSentinel2SRImage(startDate, cc, CSPLUS_CLEAR_THRESHOLD, CSPLUS_QA_BAND);
 
-print("--- 分类 Sentinel-2 SR 合成影像 ---");
+print("分类 Sentinel-2 SR 合成影像");
 var Sentinel2_SR_classified = null;
 if (classNames.size().gt(0).getInfo()){
     Sentinel2_SR_classified = performSentinel2Classification(

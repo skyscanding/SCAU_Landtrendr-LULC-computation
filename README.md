@@ -9,8 +9,6 @@ This module is designed to drop into the
 repository as a self-contained submodule. The classification outputs here
 feed downstream ecosystem-service computations in the parent repo.
 
----
-
 ## What's in here
 
 ```
@@ -47,8 +45,6 @@ GEE_LULC_SVM/
 ├── data/                           # gitignored except .gitkeep — your local inputs
 └── outputs/                        # gitignored except .gitkeep — local GeoTIFFs
 ```
-
----
 
 ## Two ways to run
 
@@ -99,8 +95,6 @@ to fall back to the Drive batch-export path.
 
 See `docs/setup_instructions.md` for the detailed auth walkthrough.
 
----
-
 ## Quick assessment of the original scripts
 
 A full code review lives in `docs/assessment.md`, but the short version:
@@ -116,8 +110,6 @@ console output was inconsistent, and heavy `getInfo()` use inside loops
 limits scalability. Those concerns shaped how the Python `lib/` is
 factored — every helper exists in exactly one place, and `getInfo()`
 calls are only used where the value is actually needed client-side.
-
----
 
 ## License
 

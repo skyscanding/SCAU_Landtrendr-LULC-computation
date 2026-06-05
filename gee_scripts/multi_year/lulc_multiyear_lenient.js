@@ -1,4 +1,4 @@
-// =============================================================================
+
 // FILE:       lulc_multiyear_lenient.js
 // PURPOSE:    Multi-year Landsat SVM LULC pipeline — relaxed/tuned variant.
 // SOURCE:     Originally `国内期刊用LULC_宽松.js` (Chinese: "for domestic
@@ -18,28 +18,28 @@
 //             may not warrant the heavier strict pipeline.
 // MODEL:      libsvm, RBF kernel, gamma=0.1, cost=10
 // SCALE:      30 m, CRS EPSG:32649
-// =============================================================================
 
-// ============================================================
+
+
 // 0) Basic setup and AOI
-// ============================================================
+
 var cc = ee.FeatureCollection("projects/ee-skyscanding/assets/Final_Reprojected_zxy");
 Map.addLayer(cc, {color: 'orange'}, 'AOI Boundary');
 Map.centerObject(cc, 13);
 
-// ===== Study period settings =====
+// Study period settings
 var startYear = 2023;
 var endYear   = 2026;
 var cloudThreshold = 20;
 var exportFolder = 'Journal_landsat+SVM';
 
-// ===== Accuracy threshold: discard if BOTH OA and Kappa < 0.7 =====
+// Accuracy threshold: discard if BOTH OA and Kappa < 0.7
 var OA_THRESHOLD    = 0.7;
 var KAPPA_THRESHOLD = 0.7;
 
-// ============================================================
+
 // Utility functions
-// ============================================================
+
 function replaceMask(img, newimg, nodata) {
   var fill = ee.Image.constant(ee.List.repeat(nodata, img.bandNames().length()))
                   .rename(img.bandNames());
@@ -70,9 +70,9 @@ function addAllIndices(image) {
   return image.addBands([ndvi, evi, ndwi, ndbi, mndwi, fvc]);
 }
 
-// ============================================================
+
 // Band normalization — RBF-SVM is scale-sensitive
-// ============================================================
+
 function normalizeImage(image, bands, region) {
   var bandsEE = ee.List(bands);
   var meanDict = image.select(bandsEE).reduceRegion({
@@ -99,9 +99,9 @@ function normalizeImage(image, bands, region) {
   return ee.ImageCollection(bandImages).toBands().rename(bandsEE);
 }
 
-// ============================================================
+
 // Training samples (defined via Geometry Imports in the GEE UI)
-// ============================================================
+
 var water_lc = water.map(function(f){ return f.set('lc', 1); });
 var builtUp_lc = builtUp.map(function(f){ return f.set('lc', 2); });
 var unrestoredLand_lc = unrestoredLand.map(function(f){ return f.set('lc', 3); });
@@ -116,9 +116,9 @@ var classNames = water_lc
 print("Total sample count (merged):", classNames.size());
 print("Unique lc values and counts:", classNames.aggregate_histogram('lc'));
 
-// ============================================================
+
 // Cloud masking — relaxed cirrus handling (same logic as original)
-// ============================================================
+
 function cloudMask(image, sensor) {
   var qa = image.select('QA_PIXEL');
   var fill         = qa.bitwiseAnd(1 << 0).neq(0);
@@ -172,11 +172,11 @@ function cloudMaskTOA(image, sensor) {
     .select(['Blue','Green','Red','NIR','SWIR1','SWIR2','LST']);
 }
 
-// ============================================================
+
 // Annual composite functions
 // Smoothing reduced: focal_median iterations 3 → 1
 // All getInfo() calls removed for batch throughput
-// ============================================================
+
 function getLandsatSRImage(startDate, cloudThreshold, region) {
   var nodata = -9999;
   var bandTemplate = ['Blue','Green','Red','NIR','SWIR1','SWIR2','LST'];
@@ -268,20 +268,20 @@ function getLandsatTOAImage(startDate, cloudThreshold, region) {
   return result;
 }
 
-// ============================================================
+
 // Classification bands
-// ============================================================
+
 var classificationBands = ['Blue','Green','Red','NIR','SWIR1','SWIR2',
                            'NDVI','EVI','NDWI','NDBI','MNDWI','FVC'];
 
-// ============================================================
+
 // SVM classification core
 // - Normalized inputs
 // - Tuned parameters: gamma 0.1, cost 10
 // - Clean 70/30 train/test split (no overlap)
 // - Accuracy gate with error-safe getInfo()
 // - Returns {image, oa, kappa, name} for best-per-year selection
-// ============================================================
+
 function trainAndClassifySVM(imageWithBands, sensorIdentifier, bandsToClassify, trainingSamples, studyRegion) {
   // Server-side dummy check
   var isDummy = ee.Number(ee.Algorithms.If(
@@ -354,7 +354,7 @@ function trainAndClassifySVM(imageWithBands, sensorIdentifier, bandsToClassify, 
   // Mask out dummy pixels (server-side)
   classifiedImage = classifiedImage.updateMask(isDummy.not());
 
-  // ---- Accuracy assessment (error-safe) ----
+  // Accuracy assessment (error-safe)
   var oaVal, kappaVal;
   try {
     var testResults = testingPartition.classify(classifier);
@@ -386,9 +386,9 @@ function trainAndClassifySVM(imageWithBands, sensorIdentifier, bandsToClassify, 
   };
 }
 
-// ============================================================
+
 // Classification entry point (unchanged logic, updated return type)
-// ============================================================
+
 function LandsatClassify(sensorNameKey, bandsForClassification,
                          trainingSamplesFC, aoiRegion, landsatCompositesDict) {
   // Check if the key exists in the dictionary
@@ -419,16 +419,16 @@ function LandsatClassify(sensorNameKey, bandsForClassification,
   );
 }
 
-// ============================================================
+
 // Multi-year loop with BEST-PER-YEAR selection
 // Evaluates all available sensors, exports only the highest
 // combined score (OA + Kappa) that passes the threshold
-// ============================================================
+
 for (var y = startYear; y <= endYear; y++) {
   var thisStartDate = ee.Date.fromYMD(y, 1, 1);
   var yStr = y.toString();
 
-  print("========== Processing year: " + yStr + " ==========");
+  print("Processing year: " + yStr);
 
   // Generate composites
   var sr_dict  = getLandsatSRImage(thisStartDate, cloudThreshold, cc);
@@ -502,4 +502,4 @@ for (var y = startYear; y <= endYear; y++) {
   });
 }
 
-print("===== All years processed. Check Tasks panel. =====");
+print("All years processed. Check Tasks panel.");

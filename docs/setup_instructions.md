@@ -9,8 +9,6 @@ outputs landing directly on disk instead of in Google Drive.
 > way to mirror the satellite collections to your machine — they're
 > petabytes.
 
----
-
 ## 1. Prerequisites
 
 - Python 3.10 or newer.
@@ -20,8 +18,6 @@ outputs landing directly on disk instead of in Google Drive.
   [Console link](https://console.cloud.google.com/) → create project →
   enable APIs → search "Earth Engine API" → Enable.
 - (Optional) `gcloud` CLI installed for first-time auth in some setups.
-
----
 
 ## 2. Install dependencies
 
@@ -33,8 +29,6 @@ pip install -r requirements.txt
 ```
 
 If you prefer `uv` or `conda`, the same `requirements.txt` works.
-
----
 
 ## 3. Authenticate (once per machine)
 
@@ -49,8 +43,6 @@ silently call `ee.Initialize(project=...)`.
 > If you get `Permission denied`, double-check that your GCP project has
 > the Earth Engine API enabled AND that your Google account is registered
 > for EE.
-
----
 
 ## 4. Upload your training samples as GEE assets (recommended)
 
@@ -71,8 +63,6 @@ in step 5 below.
 Alternative: keep training points under version control as a GeoJSON in
 this repo's `data/` folder, and adapt `01_load_samples.py` to read it
 with `geopandas`. See the `load_samples_from_geojson` stub there.
-
----
 
 ## 5. Run the multi-year pipeline
 
@@ -96,8 +86,6 @@ fine for AOI-sized single-band classifications.
 **`--output-mode drive`** → batch tasks to a Drive folder, just like the
 JS scripts. Use this for large AOIs or if local download times out.
 
----
-
 ## 6. Verify outputs
 
 ```bash
@@ -112,8 +100,6 @@ PY
 
 You should see CRS `EPSG:32649`, dtype `uint8`, and class codes drawn
 from `{1, 2, 3, 4, 5}` plus any nodata value.
-
----
 
 ## Troubleshooting
 
