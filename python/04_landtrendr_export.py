@@ -132,15 +132,27 @@ def main():
     mask = mask.and(connected.gte(args.mmu))
 
     yod = yod.updateMask(mask).toInt16().clip(aoi.geometry())
-    mag = mag.updateMask(mask).toFloat().clip(aoi.geometry())
+    mag_raw = mag.updateMask(mask).toInt16().clip(aoi.geometry())
     dur = dur.updateMask(mask).toInt16().clip(aoi.geometry())
-    mpy = mag.divide(dur).rename("magperyear").toFloat().clip(aoi.geometry())
 
+    # Recover MAG to NBR units (LandTrendr outputs MAG x 1000 as integer)
+    mag_nbr = mag_raw.multiply(0.001).rename("magNBR").toFloat().clip(aoi.geometry())
+
+    # Reclassify duration: 1 yr, 2 yr, >=3 yr (0 = no disturbance)
+    dur_reclass = dur.expression(
+        "((d >= 3) ? 3 : ((d >= 2) ? 2 : ((d >= 1) ? 1 : 0)))",
+        {"d": dur}
+    ).rename("durReclass").toInt16().clip(aoi.geometry())
+
+    # Magnitude per year (NBR/year), avoid division by zero
+    mag_per_year = mag_nbr.divide(dur.max(1)).rename("mag_per_year").toFloat().clip(aoi.geometry())
+
+    y_str = f"{args.start_year}_{args.end_year - 1}"
     exports = [
-        ("yod_2009_2024", yod),
-        ("mag_2009_2024", mag),
-        ("dur_2009_2024", dur),
-        ("magperyear_2009_2024", mpy),
+        (f"yod_{y_str}", yod),
+        (f"mag_NBR_{y_str}", mag_nbr),
+        (f"durReclass_{y_str}", dur_reclass),
+        (f"mag_per_year_{y_str}", mag_per_year),
     ]
 
     if args.output_mode == "local":
