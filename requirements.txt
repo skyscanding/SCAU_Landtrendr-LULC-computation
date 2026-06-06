@@ -1,7 +1,7 @@
-# Python dependencies for the GEE_LULC_SVM module.
+# Python dependencies for the SCAU_Landtrendr-LULC-computation module.
 # Tested against Python 3.10-3.12.
 
-# Core GEE client ,  drives the same computation as the JS scripts
+# Core GEE client, drives the same computation as the JS scripts
 earthengine-api>=0.1.385
 
 # Local raster + vector handling for downstream analysis
@@ -10,8 +10,14 @@ geopandas>=0.14
 numpy>=1.24
 pandas>=2.0
 
-# Optional but very useful: geemap wraps earthengine-api with
-# interactive maps and bulk-download helpers. Uncomment if you want it.
+# LandTrendr: the Python driver (04_landtrendr_export.py) builds the NBR
+# collection but does NOT produce valid exports. The emaprlab LandTrendr
+# module (users/emaprlab/public:Modules/LandTrendr.js) is called from the
+# JS script only. If you port getChangeMap() to Python, add lt-gee-py here.
+# lt-gee-py  # optional, for future Python-side LT extraction
+
+# Optional: geemap wraps earthengine-api with interactive maps and bulk
+# download helpers. Uncomment if needed.
 # geemap>=0.32
 
 # Jupyter only if you intend to use the notebook walkthrough

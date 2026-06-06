@@ -30,7 +30,7 @@ Map.centerObject(cc, 13);
 
 // Study period settings
 var startYear = 2000;
-var endYear   = 2024;
+var endYear   = 2025;
 var cloudThreshold = 20;
 var exportFolder = 'Journal_landsat+SVM';
 

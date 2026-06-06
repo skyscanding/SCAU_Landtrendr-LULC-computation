@@ -1,13 +1,15 @@
-"""LandTrendr disturbance detection ,  GEE export driver.
+"""LandTrendr disturbance detection, GEE export driver (reference only).
 
-Runs the LandTrendr temporal segmentation algorithm on GEE (Landsat NBR
-time series, 2009-2024) and exports YOD / MAG / DUR / MPY rasters for
-the downstream ecosystem-service pipeline.
+WARNING: ee.Algorithms.TemporalSegmentation.LandTrendr returns a vertex-fit
+array, not YOD/MAG/DUR rasters. The emaprlab module's getChangeMap() helper
+(used in the JS script) correctly extracts disturbance metrics. This Python
+driver builds the NBR collection but does NOT produce valid LandTrendr
+exports. For actual LandTrendr runs, paste and run the JS script in the
+GEE Code Editor.
 
-Usage:
+Usage (NBR collection build only):
     python 04_landtrendr_export.py --project YOUR_GCP_PROJECT \
-        --aoi-asset projects/ee-skyscanding/assets/Final_Reprojected_zxy \
-        --output-mode drive
+        --aoi-asset projects/ee-skyscanding/assets/Final_Reprojected_zxy
 """
 
 from __future__ import annotations
@@ -117,60 +119,14 @@ def main():
     lt_result = ee.Algorithms.TemporalSegmentation.LandTrendr(
         timeSeries=nbr_col, **lt_params
     )
+    print("LandTrendr vertex-fit complete (LT array stored server-side).")
+    print("NOTE: Raw LT array is vertex data, not YOD/MAG/DUR rasters.")
+    print("Use the JS script (gee_scripts/landtrendr/landtrendr_disturbance.js)")
+    print("for correct disturbance extraction via getChangeMap().")
 
-    lt_array = lt_result.select(["LandTrendr"])
-    yod = lt_array.arraySlice(0, 3, 4).arrayProject([1]).arrayFlatten([["yod"]])
-    mag = lt_array.arraySlice(0, 4, 5).arrayProject([1]).arrayFlatten([["mag"]])
-    dur = lt_array.arraySlice(0, 5, 6).arrayProject([1]).arrayFlatten([["dur"]])
-    preval = lt_array.arraySlice(0, 6, 7).arrayProject([1]).arrayFlatten([["preval"]])
-
-    mask = (mag.gt(args.mag_threshold).And(dur.lt(args.dur_threshold))
-            .And(preval.gt(args.preval_threshold)))
-
-    connected = yod.updateMask(mask).connectedPixelCount(11, True)
-    mask = mask.And(connected.gte(args.mmu))
-
-    yod = yod.updateMask(mask).toInt16().clip(aoi.geometry())
-    mag_raw = mag.updateMask(mask).toInt16().clip(aoi.geometry())
-    dur = dur.updateMask(mask).toInt16().clip(aoi.geometry())
-
-    # Recover MAG to NBR units (LandTrendr outputs MAG x 1000 as integer)
-    mag_nbr = mag_raw.multiply(0.001).rename("magNBR").toFloat().clip(aoi.geometry())
-
-    # Reclassify duration: 1 yr, 2 yr, >=3 yr (0 = no disturbance)
-    dur_reclass = dur.expression(
-        "((d >= 3) ? 3 : ((d >= 2) ? 2 : ((d >= 1) ? 1 : 0)))",
-        {"d": dur}
-    ).rename("durReclass").toInt16().clip(aoi.geometry())
-
-    # Magnitude per year (NBR/year), avoid division by zero
-    mag_per_year = mag_nbr.divide(dur.max(1)).rename("mag_per_year").toFloat().clip(aoi.geometry())
-
-    y_str = f"{args.start_year}_{args.end_year - 1}"
-    exports = [
-        (f"yod_{y_str}", yod),
-        (f"mag_NBR_{y_str}", mag_nbr),
-        (f"durReclass_{y_str}", dur_reclass),
-        (f"mag_per_year_{y_str}", mag_per_year),
-    ]
-
-    if args.output_mode == "local":
-        out_dir = Path(args.output_dir).resolve()
-        out_dir.mkdir(parents=True, exist_ok=True)
-        from lib.io_utils import download_image_to_local
-        for name, img in exports:
-            print(f"Downloading {name}...")
-            download_image_to_local(img, out_dir / f"{name}.tif", region=aoi.geometry())
-    else:
-        from lib.io_utils import export_image_to_drive
-        for name, img in exports:
-            print(f"Exporting {name} to Drive...")
-            export_image_to_drive(
-                img, description=name, folder=args.drive_folder,
-                region=aoi.geometry(), scale=args.scale, crs=args.crs,
-            )
-
-    print("Done. Check GEE Tasks panel for export progress.")
+    # The JS script uses ltgee.getChangeMap(lt, changeParams) to extract
+    # YOD/MAG/DUR from the vertex array. Porting this to Python requires
+    # emaprlab's non-trivial segment-traversal logic. Use the JS script.
 
 
 if __name__ == "__main__":

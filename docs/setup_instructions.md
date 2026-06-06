@@ -97,6 +97,28 @@ fine for AOI-sized single-band classifications.
 **`--output-mode drive`** → batch tasks to a Drive folder, just like the
 JS scripts. Use this for large AOIs or if local download times out.
 
+**`--output-name lulc_{year}`** → (added for eco-repo compatibility)
+overrides the default `{year}_{sensor}_Classification_SVM_Best` naming
+to match the eco repo's `lulc.raster_pattern`. Without this flag the
+eco repo's step 2 will not find your files.
+
+## 5b. Run the LandTrendr disturbance detection (JS only)
+
+LandTrendr disturbance detection uses the emaprlab GEE module and must
+be run via the JS script, not the Python driver.
+
+1. Open https://code.earthengine.google.com and paste
+   `gee_scripts/landtrendr/landtrendr_disturbance.js`.
+2. Import training samples as in step 3 above.
+3. Click Run. The script builds NBR composites (2009–2024), runs
+   LandTrendr temporal segmentation, and exports four rasters to Drive:
+   `yod_*.tif`, `mag_NBR_*.tif`, `durReclass_*.tif`, `mag_per_year_*.tif`.
+4. The experimental SVM duration prediction block is disabled by default
+   (`RUN_SVM_DURATION = false`). Set to `true` to enable inspection.
+
+Note: `python/04_landtrendr_export.py` builds the NBR collection but
+does not produce valid exports. Use the JS script for production runs.
+
 ## 6. Verify outputs
 
 ```bash

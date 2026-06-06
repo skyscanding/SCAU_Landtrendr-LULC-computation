@@ -1,123 +1,55 @@
-# Integrating with `SCAU_ecosystem-service-computation`
+# Sibling-repo handoff with `SCAU_ecosystem-service-computation`
 
-This module is intended to live alongside whatever ecosystem-service
-calculation code the parent repo already contains. The classification
-outputs (annual LULC GeoTIFFs in `EPSG:32649`, class codes 1-5) are the
-primary handoff.
+This repo (`SCAU_Landtrendr-LULC-computation`) and the eco repo
+(`SCAU_ecosystem-service-computation`) are independent sibling repositories
+that work together via a filename and class-code convention.
 
-## Adding the submodule to the parent repo
-
-### Option 1 ,  vendor the folder directly (simple, recommended)
-
-From the parent repo root:
-
-```bash
-# After unzipping this package, copy the folder in
-cp -r /path/to/unzipped/GEE_LULC_SVM ./
-
-# Stage & commit
-git add GEE_LULC_SVM
-git commit -m "Add GEE_LULC_SVM module: SVM-based LULC classification pipeline"
-git push
-```
-
-Pros: a single repo, everything diffs together, no submodule headaches.
-Cons: future updates to `GEE_LULC_SVM` are tied to the parent repo's
-commit history.
-
-### Option 2 ,  keep `GEE_LULC_SVM` as its own repo and add as a Git submodule
-
-```bash
-# In a separate location, init the GEE_LULC_SVM folder as its own repo
-cd /path/to/unzipped/GEE_LULC_SVM
-git init
-git add .
-git commit -m "Initial commit"
-# Create a new empty repo on GitHub named GEE_LULC_SVM, then:
-git remote add origin git@github.com:skyscanding/GEE_LULC_SVM.git
-git branch -M main
-git push -u origin main
-
-# In the parent repo
-cd /path/to/SCAU_ecosystem-service-computation
-git submodule add git@github.com:skyscanding/GEE_LULC_SVM.git GEE_LULC_SVM
-git commit -m "Add GEE_LULC_SVM as submodule"
-git push
-```
-
-Pros: independent versioning; you can reuse `GEE_LULC_SVM` in other
-projects. Cons: requires `git submodule update --init --recursive` on
-fresh clones, and the parent repo only pins a specific commit.
-
-> Without seeing the parent repo's existing structure I'd lean toward
-> **Option 1**. If you're collaborating with classmates and they're
-> already comfortable with submodules, switch to Option 2.
-
-## How the data flows between the two
+## How the data flows
 
 ```
-                  ┌───────────────────────────────┐
-                  │ GEE_LULC_SVM (this module)    │
-                  │                               │
-                  │   training samples + AOI      │
-                  │             │                 │
-                  │             ▼                 │
-                  │   GEE classification job      │
-                  │             │                 │
-                  │             ▼                 │
-                  │   outputs/{year}_*.tif        │  ◀── EPSG:32649, uint8, codes 1-5
-                  └─────────────┬─────────────────┘
-                                │
-                                ▼
-                  ┌───────────────────────────────┐
-                  │ Parent repo                   │
-                  │                               │
-                  │  reads outputs/{year}_*.tif   │
-                  │             │                 │
-                  │             ▼                 │
-                  │  per-class area, transition   │
-                  │  matrices, ESV / InVEST runs  │
-                  │             │                 │
-                  │             ▼                 │
-                  │  ecosystem-service tables /   │
-                  │  spatial layers               │
-                  └───────────────────────────────┘
+┌───────────────────────────────────────┐
+│ SCAU_Landtrendr-LULC-computation      │
+│                                       │
+│   LandTrendr JS (GEE Code Editor)     │
+│         │                             │
+│         ▼                             │
+│   outputs: yod_*.tif, mag_NBR_*.tif,  │
+│            durReclass_*.tif,           │
+│            mag_per_year_*.tif          │
+│                                       │
+│   SVM LULC JS or Python CLI           │
+│         │                             │
+│         ▼                             │
+│   outputs: lulc_{year}.tif            │  ◀── EPSG:32649, uint8, codes 1-5
+└─────────────┬─────────────────────────┘
+              │
+              ▼
+┌───────────────────────────────────────┐
+│ SCAU_ecosystem-service-computation    │
+│                                       │
+│  reads outputs/landtrendr/*.tif       │
+│  reads outputs/lulc/*.tif             │
+│         │                             │
+│         ▼                             │
+│  step1: LandTrendr stats              │
+│  step2: LULC area trends              │
+│  step3–10: landscape, InVEST, stats   │
+└───────────────────────────────────────┘
 ```
 
-If the parent repo expects inputs at a specific path, edit
-`python/02_landsat_svm_multiyear.py`'s `--output-dir` default (line in
-the argparse block) and re-run.
+## Conventions that must stay in sync
 
-## Suggested .gitignore changes for the parent repo
+| Contract | LULC repo value | Eco repo config key |
+|---|---|---|
+| CRS | EPSG:32649 | `crs` |
+| Pixel size | 30 m (LULC), 30 m (LT) | `study_area.raster_res_m` |
+| LULC class codes | 1=water, 2=built_up, 3=unrestored, 4=recovering, 5=stable_vegetation | `lulc.classes` |
+| LULC filename | `lulc_{year}.tif` (use `--output-name lulc_{year}`) | `lulc.raster_pattern` |
+| LT filename | As exported by the JS script | `landtrendr.{yod,mag,dur,mpy}_raster` |
 
-Add these at the parent repo root if not already present:
+## Running the full pipeline
 
-```
-# GEE_LULC_SVM intermediate files
-GEE_LULC_SVM/data/*
-!GEE_LULC_SVM/data/.gitkeep
-GEE_LULC_SVM/outputs/*
-!GEE_LULC_SVM/outputs/.gitkeep
-GEE_LULC_SVM/.venv/
-GEE_LULC_SVM/**/__pycache__/
-```
-
-Outputs can be many gigabytes for a 25-year run at 30 m; you don't want
-to commit them.
-
-## Reusing the Python lib from parent-repo scripts
-
-```python
-import sys
-from pathlib import Path
-
-# Adjust if your script lives elsewhere
-sys.path.insert(0, str(Path(__file__).parent / "GEE_LULC_SVM" / "python"))
-
-from lib import add_all_indices, landsat_sr_annual_composite
-# ... your ecosystem-service computation code here
-```
-
-If you'd rather install it as a proper package (`pip install -e
-./GEE_LULC_SVM`), add a minimal `pyproject.toml` to the module. Happy to
-flesh that out in a follow-up if it would help.
+1. Run the LandTrendr JS script in GEE Code Editor → export rasters to Drive.
+2. Run the LULC classification (JS or Python `--output-name lulc_{year}`) → export to Drive or local `outputs/`.
+3. Copy all GeoTIFFs into the eco repo's data directories.
+4. Run the eco repo's `master_pipeline.py` with a config pointing at those files.

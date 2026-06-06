@@ -3,6 +3,7 @@
 //             duration prediction for the Dabaoshan mine area.
 // NOTE:       Tested and can apply SVM training to check sample accuracy,
 //             but not systematically reviewed, still needs periodic adjustment.
+//             Guarded behind RUN_SVM_DURATION flag; set to true to enable.
 // DEPENDENCY: users/emaprlab/public:Modules/LandTrendr.js
 // INPUTS:     AOI: projects/ee-skyscanding/assets/Final_Reprojected_zxy
 //             Training points: imported via training_samples.js
@@ -17,8 +18,8 @@ Map.centerObject(roi, 13);
 Map.addLayer(roi, {color: 'orange'}, 'Study Area');
 
 // Analysis year range
-var startYear = 2013;
-var endYear   = 2025;
+var startYear = 2009;
+var endYear   = 2024;
 
 var startFilter = startYear + '-01-01';
 var endFilter   = endYear   + '-01-01';  // exclusive end date
@@ -35,11 +36,11 @@ var runParams = {
   minObservationsNeeded:  6
 };
 
-// Change detection parameters
+// Change detection parameters (disturbance window 2013-2024, separate from baseline)
 var changeParams = {
   delta:  'loss',
   sort:   'greatest',
-  year:   {checked: true, start: startYear, end: endYear},
+  year:   {checked: true, start: 2013, end: 2024},
   mag:    {checked: true, value: 200,  operator: '>'},
   dur:    {checked: true, value: 5,    operator: '<'},
   preval: {checked: true, value: 300,  operator: '>'},
@@ -174,8 +175,7 @@ var collection8 = ee.ImageCollection('LANDSAT/LC08/C02/T1_L2')
 
 var composite8 = collection8.median();
 
-// Preview composite (RGB = red, green, blue)
-Map.setCenter(-4.52, 40.29, 7);
+// Preview composite (RGB = red, green, blue) — uses AOI center from line 16
 Map.addLayer(
   composite8,
   {bands: ['red','green','blue'], min: 0, max: 0.3},
@@ -315,7 +315,11 @@ Export.image.toDrive({
 
 // ================================================================
 // SVM training for disturbance duration prediction (classes 1,2,3)
+// Set RUN_SVM_DURATION = true to enable this experimental block.
+// NOTE: output is not exported to Drive; for inspection only.
 // ================================================================
+var RUN_SVM_DURATION = false;
+if (RUN_SVM_DURATION) {
 
 // 1. SVM training function (trains directly from FeatureCollection)
 function trainSVMFromFeatureCollection(trainingDataFC, sensorIdentifier, inputFeatureProperties, classProperty) {
@@ -476,3 +480,4 @@ if (svmDurPredictionAssets_filtered && svmDurPredictionAssets_filtered.classifie
 } else {
   print('SVM duration prediction (classes 1,2,3) failed. Check sample count and previous error messages.');
 }
+} // end if (RUN_SVM_DURATION)

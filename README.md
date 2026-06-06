@@ -18,7 +18,7 @@ analysis pipeline:
 ## What's in here
 
 **gee_scripts/**: original JS, paste into GEE Code Editor
-- `samples/training_samples.js`: hand-digitized training points (5 classes: water, built_up, unrestored, recovering, stable_vegetation) plus the AOI FeatureCollection. Paste this first to create the Geometry Imports.
+- `samples/training_samples.js`: hand-digitized training points (5 classes: water, builtUp, unrestoredLand, restoring, stableVegetation) plus the AOI FeatureCollection.
 - `single_year/landsat_svm.js`: Landsat 7/8/9 single year (2014), SR + TOA median composites, 6 spectral indices, RBF-SVM, exports 4 GeoTIFFs.
 - `single_year/sentinel2_svm.js`: Sentinel-2 single year (2018), Cloud Score+ masking, 10 m resolution.
 - `multi_year/lulc_multiyear_strict.js`: production pipeline (2000-2025), GLCM textures, class-balanced sampling, z-score normalization, best per year by OA + Kappa.
