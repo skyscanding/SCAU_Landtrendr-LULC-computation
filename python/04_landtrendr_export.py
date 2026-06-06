@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import argparse
 import sys
-from pathlib import Path
 
 import ee
 
@@ -78,22 +77,8 @@ def main():
     parser.add_argument("--project", required=True)
     parser.add_argument("--aoi-asset", default=_load_samples.DEFAULT_AOI_ASSET)
     parser.add_argument("--start-year", type=int, default=2009)
-    parser.add_argument("--end-year", type=int, default=2024)
-    parser.add_argument("--max-segments", type=int, default=6)
-    parser.add_argument("--mag-threshold", type=int, default=200)
-    parser.add_argument("--dur-threshold", type=int, default=5)
-    parser.add_argument("--preval-threshold", type=int, default=300)
-    parser.add_argument("--mmu", type=int, default=11)
-    parser.add_argument("--scale", type=int, default=30)
-    parser.add_argument("--crs", default="EPSG:32649")
-    parser.add_argument(
-        "--output-mode",
-        choices=["drive", "local"],
-        default="drive",
-        help="drive = batch-export tasks; local = getDownloadURL",
-    )
-    parser.add_argument("--drive-folder", default="LandTrendr_export")
-    parser.add_argument("--output-dir", default="../outputs")
+    parser.add_argument("--end-year", type=int, default=2025,
+                        help="Exclusive end year; NBR built through (end-year - 1)")
     args = parser.parse_args()
 
     print(f"Initializing GEE with project: {args.project}")
@@ -101,32 +86,14 @@ def main():
 
     aoi = _load_samples.load_aoi(args.aoi_asset)
 
-    print(f"Building NBR collection {args.start_year}-{args.end_year}...")
-    nbr_col = build_nbr_collection(aoi, args.start_year, args.end_year)
+    print(f"Building NBR collection {args.start_year}-{args.end_year - 1}...")
+    nbr_col = build_nbr_collection(aoi, args.start_year, args.end_year - 1)
+    print(f"NBR collection built: {nbr_col.size().getInfo()} annual composites.")
 
-    lt_params = {
-        "maxSegments": args.max_segments,
-        "spikeThreshold": 0.9,
-        "vertexCountOvershoot": 3,
-        "preventOneYearRecovery": True,
-        "recoveryThreshold": 0.25,
-        "pvalThreshold": 0.05,
-        "bestModelProportion": 0.75,
-        "minObservationsNeeded": 6,
-    }
-
-    print("Running LandTrendr...")
-    lt_result = ee.Algorithms.TemporalSegmentation.LandTrendr(
-        timeSeries=nbr_col, **lt_params
-    )
-    print("LandTrendr vertex-fit complete (LT array stored server-side).")
-    print("NOTE: Raw LT array is vertex data, not YOD/MAG/DUR rasters.")
-    print("Use the JS script (gee_scripts/landtrendr/landtrendr_disturbance.js)")
-    print("for correct disturbance extraction via getChangeMap().")
-
-    # The JS script uses ltgee.getChangeMap(lt, changeParams) to extract
-    # YOD/MAG/DUR from the vertex array. Porting this to Python requires
-    # emaprlab's non-trivial segment-traversal logic. Use the JS script.
+    print("\nThis driver is a reference stub. It builds the NBR time series")
+    print("but does NOT run LandTrendr or export disturbance rasters.")
+    print("For actual LandTrendr exports, use the JS script:")
+    print("  gee_scripts/landtrendr/landtrendr_disturbance.js")
 
 
 if __name__ == "__main__":

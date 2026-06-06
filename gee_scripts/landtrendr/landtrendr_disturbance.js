@@ -19,7 +19,7 @@ Map.addLayer(roi, {color: 'orange'}, 'Study Area');
 
 // Analysis year range
 var startYear = 2009;
-var endYear   = 2024;
+var endYear   = 2025;
 
 var startFilter = startYear + '-01-01';
 var endFilter   = endYear   + '-01-01';  // exclusive end date
