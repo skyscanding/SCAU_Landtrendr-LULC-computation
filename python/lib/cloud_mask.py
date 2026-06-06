@@ -2,7 +2,7 @@
 
 Logic mirrors the JS `cloudMask` / `cloudMaskTOA` / Cloud Score+ blocks.
 Cirrus (QA_PIXEL bit 2) is deliberately NOT masked, matching the existing
-GEE behavior — change `MASK_CIRRUS = True` if you want stricter filtering.
+GEE behavior ,  change `MASK_CIRRUS = True` if you want stricter filtering.
 """
 from __future__ import annotations
 
@@ -70,7 +70,7 @@ def landsat_sr_mask(image: ee.Image, sensor: str) -> ee.Image:
 
 
 def landsat_toa_mask(image: ee.Image, sensor: str) -> ee.Image:
-    """TOA equivalent of `landsat_sr_mask` — no rescaling, just band rename."""
+    """TOA equivalent of `landsat_sr_mask` ,  no rescaling, just band rename."""
     qa_mask = _qa_mask(image)
 
     if sensor == "L7":

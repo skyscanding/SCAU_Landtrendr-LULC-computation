@@ -1,4 +1,4 @@
-# Setup instructions — local Python pipeline
+# Setup instructions ,  local Python pipeline
 
 The Python side of `GEE_LULC_SVM` lets you run the same classification
 workflow from your laptop / lab machine, in a script or a notebook, with
@@ -6,7 +6,7 @@ outputs landing directly on disk instead of in Google Drive.
 
 > Note: Earth Engine still does the heavy compute on Google's servers.
 > The Python code orchestrates jobs and downloads results. There's no
-> way to mirror the satellite collections to your machine — they're
+> way to mirror the satellite collections to your machine ,  they're
 > petabytes.
 
 ## 1. Prerequisites
@@ -126,10 +126,10 @@ parallel candidates. Multi-year strict already runs sequentially.
 
 **Classifier training fails with `Too many missing values`.**
 Some samples fell on masked pixels. The script already filters those
-out — but if a year has heavy cloud cover and few scenes, even after
+out ,  but if a year has heavy cloud cover and few scenes, even after
 filtering you may be below the 10-sample floor. The script logs and
 skips those years; check the console output.
 
 **Confusion-matrix accuracy is suspiciously high (e.g. 0.99+).**
 Often a sign that training and testing samples are spatially clustered.
-Consider stratified spatial splits — left as a TODO in `svm_classify.py`.
+Consider stratified spatial splits ,  left as a TODO in `svm_classify.py`.

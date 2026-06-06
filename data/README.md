@@ -1,6 +1,6 @@
 # data/
 
-Local inputs only — nothing here is committed by default (`.gitignore`
+Local inputs only ,  nothing here is committed by default (`.gitignore`
 excludes `data/*` except for this README and `.gitkeep`).
 
 Drop your local copies of:

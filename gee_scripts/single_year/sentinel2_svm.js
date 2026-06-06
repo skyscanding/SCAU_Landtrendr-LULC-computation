@@ -1,12 +1,11 @@
 // FILE:       sentinel2_svm.js
-// NOTE:       Chinese comments and print strings were AI-assisted translations.
 // PURPOSE:    Single-year Sentinel-2 SR SVM LULC classification using
 //             Cloud Score+ for cloud masking.
 // SOURCE:     Originally `Sentinel_SVM.js`
 // INPUTS:     - Training points: imported via training_samples.js
 //             - AOI:             projects/ee-skyscanding/assets/Final_Reprojected_zxy
 //             - Year:            hardcoded at `var year = 2018`
-// OUTPUTS:    1 classified GeoTIFF to Drive folder `监督土地分类Sentinel版`:
+// OUTPUTS:    1 classified GeoTIFF to Drive folder `Sentinel_SVM_Classification`:
 //               - {year}_Sentinel2_SR_CSPlus_Classification_ZXY
 // CLOUD MASK: COPERNICUS/S2_SR_HARMONIZED linked to GOOGLE/CLOUD_SCORE_PLUS;
 //             keeps pixels with cs_cdf >= 0.30
@@ -17,20 +16,20 @@
 // NOTE:       Contains a commented-out linear-fit gap-fill block (kept for
 //             reference); current pipeline takes the unfilled median.
 
-// AOI 设置
+// AOI setup
 var cc = ee.FeatureCollection("projects/ee-skyscanding/assets/Final_Reprojected_zxy"); 
-Map.addLayer(cc, {color: 'red'}, 'AOI 边界');
+Map.addLayer(cc, {color: 'red'}, 'AOI Boundary');
 Map.centerObject(cc, 13);
 
 var year = 2018;
 //var cloudThreshold = 30;
 var startDate = ee.Date.fromYMD(year, 1, 1);
 
-// Cloud Score+ 相关参数
-var CSPLUS_QA_BAND = 'cs_cdf'; // cs
+// Cloud Score+ parameters
+var CSPLUS_QA_BAND = 'cs_cdf';
 var CSPLUS_CLEAR_THRESHOLD = 0.30;
 
-// 1) 基础
+// 1) Utilities
 function replaceMask(img, newimg, nodata) {
   var fill = ee.Image.constant(ee.List.repeat(nodata, img.bandNames().length()))
                   .rename(img.bandNames());
@@ -44,7 +43,7 @@ function addTimeBand(img) {
   return img.addBands(time);
 }
 
-// 2) 光谱指数计算
+// 2) Spectral indices
 var sentinelOpticalBands = ['Blue','Green','Red','NIR','SWIR1','SWIR2'];
 var indexBands = ['NDVI', 'EVI', 'NDWI', 'NDBI', 'MNDWI', 'FVC'];
 var outputBandsDefault = sentinelOpticalBands.concat(indexBands);
@@ -65,7 +64,7 @@ function addAllIndices(image) {
   return image.addBands([ndvi, evi, ndwi, ndbi, mndwi, fvc]);
 }
 
-//分类的东西
+// Class definitions
 var water_lc = water.map(function(f){ return f.set('lc', 1); });
 var builtUp_lc = builtUp.map(function(f){ return f.set('lc', 2); });
 var unrestoredLand_lc = unrestoredLand.map(function(f){ return f.set('lc', 3); });
@@ -78,9 +77,9 @@ var classNames = water_lc
   .merge(restoring_lc)
   .merge(stableVegetation_lc);
 
-print('classNames 中 lc 的唯一值和数量:', classNames.aggregate_histogram('lc'));
+print('Unique lc values and counts in classNames:', classNames.aggregate_histogram('lc'));
 
-// 4) Sentinel-2 SR 年均值合成函数 (使用 Cloud Score+ 进行掩膜)
+// 3) Sentinel-2 SR annual median composite with Cloud Score+ masking
 function getSentinel2SRImage(startDate, region, clearScoreThreshold, csPlusQaBand) {
   var targetYear = ee.Date(startDate).get('year');
   var yearFilter = ee.Filter.calendarRange(targetYear, targetYear, 'year');
@@ -92,35 +91,35 @@ function getSentinel2SRImage(startDate, region, clearScoreThreshold, csPlusQaBan
                       .rename(sentinelOpticalBands)
                       .clip(region.geometry());
 
-  // Sentinel-2 SR 影像集
+  // Sentinel-2 SR collection
   var s2SR_collection = ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')
                         .filterBounds(region);
 
-  // 影集
+  // Cloud Score+ collection
   var csPlus_collection = ee.ImageCollection('GOOGLE/CLOUD_SCORE_PLUS/V1/S2_HARMONIZED');
 
-  // 按年筛选S2影像
+  // Filter S2 by year
   var s2SR_yearly = s2SR_collection.filter(yearFilter);
-  print('调试: 年份 ' + targetYear.getInfo() + ' 在AOI内的原始S2影像数量 (应用掩膜前):', s2SR_yearly.size());
+  print('Debug: raw S2 image count for year ' + targetYear.getInfo() + ' in AOI (before masking):', s2SR_yearly.size());
 
-  // 将S2影像与Cloud Score+连接，并应用掩膜、缩放和重命名
+  // Link S2 with Cloud Score+, apply mask, scale, and rename
   var s2SR_col_processed = s2SR_yearly
-    .linkCollection(csPlus_collection, [csPlusQaBand]) // 连接两个集合
+    .linkCollection(csPlus_collection, [csPlusQaBand]) // link the two collections
     .map(function(img) {
-      // 应用Cloud Score+掩膜
+      // Apply Cloud Score+ mask
       var maskedImg = img.updateMask(img.select(csPlusQaBand).gte(clearScoreThreshold));
 
-      // 选择、缩放并重命名光学波段
+      // Select, scale, and rename optical bands
       var opticalBandsScaled = maskedImg.select(['B2','B3','B4','B8','B11','B12'])
-                                .multiply(0.0001) // 缩放到0-1反射率
+                                .multiply(0.0001) // scale to 0-1 reflectance
                                 .rename(['Blue','Green','Red','NIR','SWIR1','SWIR2']);
       return opticalBandsScaled.copyProperties(img, ['system:time_start']);
     });
 
-  // 执行线性拟合和填充
+  // Execute linear fit and fill
 function _executeLinearFitAndFill(imgToFill, bandsForFit, fillMedianImage, kernelToUse) {
   var fillSelected = fillMedianImage.select(bandsForFit);
-  var imgSelected = imgToFill.select(bandsForFit); // 确保 imgToFill 至少包含这些波段
+  var imgSelected = imgToFill.select(bandsForFit);
   var paired = fillSelected.addBands(imgSelected);
 
   var fit = paired.reduceNeighborhood({
@@ -129,7 +128,7 @@ function _executeLinearFitAndFill(imgToFill, bandsForFit, fillMedianImage, kerne
     inputWeight: 'mask'
   });
 
-  // 关键检查：确保 fit 影像包含所有预期的 offset 和 scale 波段
+  // Key check: ensure fit image contains all expected offset and scale bands
   var expectedOffsetBands = bandsForFit.map(function(b) { return ee.String(b).cat('_offset'); });
   var expectedScaleBands = bandsForFit.map(function(b) { return ee.String(b).cat('_scale'); });
   var allExpectedFitBands = ee.List(expectedOffsetBands).cat(expectedScaleBands);
@@ -137,95 +136,86 @@ function _executeLinearFitAndFill(imgToFill, bandsForFit, fillMedianImage, kerne
 
   var allFitBandsGenerated = allExpectedFitBands.map(function(expectedName) {
     return actualFitBands.contains(expectedName);
-  }).reduce(ee.Reducer.and()); // 检查是否所有预期波段都存在
+  }).reduce(ee.Reducer.and()); // check if all expected bands exist
 
-  // 定义 "true" 分支的逻辑 (如果 fit 正常生成了所有波段)
-  // 使用 IIFE 来直接返回一个 ee.Image 计算结果
+  // "true" branch logic (if fit generated all bands normally)
+  // Using IIFE to directly return an ee.Image result
   var filledImageWhenFitGenerated = (function() {
     var offset = fit.select(expectedOffsetBands).rename(bandsForFit);
     var scaleFactor = fit.select(expectedScaleBands).rename(bandsForFit);
-    // 使用 fillSelected (来自 fillMedianImage) 作为乘法和加法的基础
     var filledValues = fillSelected.multiply(scaleFactor).add(offset);
-    // 使用 unmask 填充原始影像中对应波段的掩膜区域
-    // 然后选择原始影像的所有波段，以保持影像结构完整性
     return imgToFill.unmask(filledValues, true).select(imgToFill.bandNames());
-  })(); // 立即执行
+  })(); // execute immediately
 
   return ee.Image(ee.Algorithms.If(
     allFitBandsGenerated,
-    filledImageWhenFitGenerated, // 直接传递 GEE 对象
-    // 如果 fit 未能正常生成所有波段 (可能因为输入数据问题)，返回原始影像
+    filledImageWhenFitGenerated, // pass GEE object directly
+    // If fit failed to generate all bands (possible input data issue), return original image
     imgToFill
   ));
 }
-    //GapFill 辅助函数
-  /*var kernel = ee.Kernel.square(10 * 10, 'meters', false); // kernel 可以定义在外部
+    // GapFill helper function
+  /*var kernel = ee.Kernel.square(10 * 10, 'meters', false);
 
   function GapFill(img, collectionForFill) {
   var timeStartObj = img.get('system:time_start');
 
-  // 定义当 timeStartObj 存在时的计算逻辑 (整个结果是一个 ee.Image)
+  // Logic when timeStartObj exists (entire result is an ee.Image)
   var filledImageWhenTimeExists = (function() {
     var imgDate = ee.Date(timeStartObj);
     var bandsToFit = ee.List(img.bandNames()).filter(ee.Filter.inList('item', sentinelOpticalBands));
 
-    // 条件2: 必须有光学波段需要填充
+    // Condition 2: must have optical bands to fill
     return ee.Image(ee.Algorithms.If(
       bandsToFit.length().gt(0),
-      // 条件2为真: bandsToFit 非空
+      // Condition 2 true: bandsToFit not empty
       (function() { // IIFE for Condition 2 true branch
         var start = imgDate.advance(-2, 'year');
         var end = imgDate.advance(2, 'year');
         var fillSourceCollection = collectionForFill.filterDate(start, end);
 
-        // 条件3: 必须有填充源影像
+        // Condition 3: must have fill source images
         return ee.Image(ee.Algorithms.If(
           fillSourceCollection.size().gt(0),
-          // 条件3为真: fillSourceCollection 非空
+          // Condition 3 true: fillSourceCollection not empty
           (function() { // IIFE for Condition 3 true branch
             var fillMedian = fillSourceCollection.median().select(sentinelOpticalBands);
-            // 确定 fillMedian 和 img (通过bandsToFit) 之间的共同可用波段
             var commonBandsToUse = fillMedian.bandNames().filter(ee.Filter.inList('item', bandsToFit));
 
-            // 条件4: 必须有共同波段进行拟合
+            // Condition 4: must have common bands for fitting
             return ee.Image(ee.Algorithms.If(
               commonBandsToUse.length().gt(0),
-              // 条件4为真: commonBandsToUse 非空, 执行核心填充
+              // Condition 4 true: commonBandsToUse not empty, execute core fill
               _executeLinearFitAndFill(img, commonBandsToUse, fillMedian, kernel),
-              // 条件4为假: 没有共同波段，返回原图
+              // Condition 4 false: no common bands, return original
               img
             ));
-          })(), // 立即执行
-          // 条件3为假: fillSourceCollection 为空，返回原图
+          })(), // execute immediately
+          // Condition 3 false: fillSourceCollection empty, return original
           img
         ));
-      })(), // 立即执行
-      // 条件2为假: bandsToFit 为空，返回原图
+      })(), // execute immediately
+      // Condition 2 false: bandsToFit empty, return original
       img
     ));
-  })(); // 立即执行
+  })(); // execute immediately
 
-  // 服务器端逻辑开始
+  // Server-side logic begins
   return ee.Image(ee.Algorithms.If(
-    timeStartObj, // 条件1: timeStartObj 存在 (GEE 服务器端对象)
-    filledImageWhenTimeExists, // 如果条件1为真，使用上面定义的计算结果
-    // 条件1为假: timeStartObj 为 null (服务器端判断)，返回原图
+    timeStartObj, // Condition 1: timeStartObj exists (GEE server-side object)
+    filledImageWhenTimeExists, // if true, use above computed result
+    // Condition 1 false: timeStartObj is null (server-side), return original
     img
   ));
 }
-  //GapFill函数就运行到这里
+  // GapFill function ends here
 */
 
   var s2_composite;
   if (s2SR_col_processed.size().gt(0).getInfo()) {
-    print('s2SR_col_processed不是空集, 有这么多张图:', s2SR_col_processed.size());
-    // print('GapFill之前的波段情况:', ee.Image(s2SR_col_processed.first())); // 如果 s2SR_col_processed 为空，first() 会报错
+    print('s2SR_col_processed is not empty, image count:', s2SR_col_processed.size());
 
-    // var s2_col_gapfilled = s2SR_col_processed.map(function(imgFromMap){ 
-    //   print('Mapping GapFill onto imgFromMap:', imgFromMap); 
-    //   return GapFill(imgFromMap, s2SR_col_processed);
-    // });
-    var s2_col_gapfilled = s2SR_col_processed; // 直接使用未填充的影像集
+    var s2_col_gapfilled = s2SR_col_processed; // use unfilled collection directly
     var firstImage = ee.Image(s2_col_gapfilled.first());
     var bandsPresent = ee.Algorithms.If(
         s2_col_gapfilled.size().gt(0).and(firstImage.bandNames().size().gt(0)),
@@ -236,20 +226,20 @@ function _executeLinearFitAndFill(imgToFill, bandsForFit, fillMedianImage, kerne
     s2_composite = ee.Image(ee.Algorithms.If(
       bandsPresent,
       s2_col_gapfilled.median().select(sentinelOpticalBands),
-      dummyImg //没图就用dummy
+      dummyImg // use dummy if no data
     ));
     s2_composite = s2_composite.clip(region.geometry());
   } else {
-    print('在AOI内找不到年份 ' + targetYear.getInfo() + ' 的Sentinel-2影像。');
+    print('No Sentinel-2 images found in AOI for year ' + targetYear.getInfo() + '.');
     s2_composite = dummyImg;
   }
 
   s2_composite = addAllIndices(s2_composite).select(s2OutputBands);
-  // 检查 s2_composite 是否是 dummyImg，或者处理后是否还有有效波段
+  // Check whether s2_composite is dummy or still has valid bands after processing
   var isDummyCheck = ee.Algorithms.If(
-      s2_composite.bandNames().size().gt(0).and(s2_composite.reduceRegion(ee.Reducer.max(), region.geometry(), 1000).values().get(0)), // 尝试读取一个值
-      s2SR_col_processed.size().eq(0), // isDummy 原逻辑
-      true // 如果没有波段或值，也认为是dummy
+      s2_composite.bandNames().size().gt(0).and(s2_composite.reduceRegion(ee.Reducer.max(), region.geometry(), 1000).values().get(0)),
+      s2SR_col_processed.size().eq(0), // original isDummy logic
+      true // also treat as dummy if no bands or values
   );
   s2_composite = s2_composite.set('isDummy', isDummyCheck);
 
@@ -260,13 +250,13 @@ function _executeLinearFitAndFill(imgToFill, bandsForFit, fillMedianImage, kerne
 }
 
 
-// 5) 样本均衡与影像完整性检查
+// 4) Sample balancing and image completeness check
 function getBalancedSamples(imageWithBands, featureCollection, scale, refBandName) {
   var samples = imageWithBands.sampleRegions({
     collection: featureCollection, properties: ['lc'], scale: scale, geometries: true
   });
   samples = samples.filter(ee.Filter.neq(refBandName, -9999));
-  print('原始样本数量:', samples.size());
+  print('Original sample count:', samples.size());
   var classValues = ee.List(samples.aggregate_array('lc')).distinct().sort();
   var balanced = ee.FeatureCollection(classValues.map(function(cls) {
     cls = ee.Number(cls);
@@ -276,7 +266,7 @@ function getBalancedSamples(imageWithBands, featureCollection, scale, refBandNam
                   ee.Algorithms.If(count.lt(500), count, 500));
     return classSamples.randomColumn('rand').limit(ee.Number(desired), 'rand');
   }).flatten());
-  print('均衡后样本数量:', balanced.size());
+  print('Balanced sample count:', balanced.size());
   return balanced;
 }
 
@@ -287,43 +277,43 @@ function isImageComplete(image, region, refBandName) {
   return ee.Number(maskStats.get(refBandName));
 }
 
-// 6) SVM部分，非常重要）！！
+// 5) SVM section
 function trainAndClassifySVM(imageWithBands, sensorIdentifier, bandsToClassify, trainingSamples, studyRegion) {
   if (!trainingSamples || trainingSamples.size().eq(0).getInfo()) {
-    print('错误 (' + sensorIdentifier + '): 无训练样本或样本集为空。跳过分类。');
+    print('Error (' + sensorIdentifier + '): no training samples or empty collection. Skipping.');
     return null;
   }
   if (!imageWithBands || imageWithBands.bandNames().size().eq(0).getInfo()) {
-     print('错误 (' + sensorIdentifier + '): 输入影像为空或无波段。跳过分类。');
+     print('Error (' + sensorIdentifier + '): input image is empty or has no bands. Skipping.');
     return null;
   }
   if (imageWithBands.get('isDummy').getInfo()) {
-    print('跳过分类 (' + sensorIdentifier + '): 输入为无数据影像。');
+    print('Skip (' + sensorIdentifier + '): input is a dummy image.');
     return null;
   }
-  var availableBands = imageWithBands.bandNames(); // 服务器端 ee.List
-  var bandsToClassify_ee = ee.List(bandsToClassify); // 将JS数组转换为ee.List
-  var nBandsRequired_check = bandsToClassify_ee.length(); // 需要的波段总数 (ee.Number)
+  var availableBands = imageWithBands.bandNames(); // server-side ee.List
+  var bandsToClassify_ee = ee.List(bandsToClassify);
+  var nBandsRequired_check = bandsToClassify_ee.length();
 
-  // 调试打印：输出 bandsToClassify_ee 和 availableBands
-  print('调试 (' + sensorIdentifier + '): 请求分类的波段列表 (bandsToClassify_ee):', bandsToClassify_ee);
-  print('调试 (' + sensorIdentifier + '):影像实际可用波段列表 (availableBands):', availableBands);
+  // Debug: print bandsToClassify_ee and availableBands
+  print('Debug (' + sensorIdentifier + '): requested classification bands:', bandsToClassify_ee);
+  print('Debug (' + sensorIdentifier + '): actual bands in image:', availableBands);
 
-  // 之前的 map 结果（用于检视）
+  // Map result for inspection
   var mappedContainsList_check = bandsToClassify_ee.map(function(bandName) {
-    return availableBands.contains(ee.String(bandName)); // 返回 ee.Boolean (1 或 0)
+    return availableBands.contains(ee.String(bandName)); // returns ee.Boolean (1 or 0)
   });
-  print('调试 (' + sensorIdentifier + '): 波段存在性映射列表 (1为存在, 0为不存在):', mappedContainsList_check);
+  print('Debug (' + sensorIdentifier + '): band presence map (1=present, 0=absent):', mappedContainsList_check);
   
-  // 修正 nBandsPresent_check 的计算方式：通过筛选并获取大小
+  // Fixed nBandsPresent_check: filter and get size
   var presentBandsInList_check = bandsToClassify_ee.filter(
-    ee.Filter.inList('item', availableBands) // 'item' 是ee.List元素的默认属性名
+    ee.Filter.inList('item', availableBands)
   );
-  var nBandsPresent_check = presentBandsInList_check.size(); // 直接获取存在波段的数量 (ee.Number)
+  var nBandsPresent_check = presentBandsInList_check.size();
   
-  print('调试 (' + sensorIdentifier + '): 实际筛选出的存在于影像中的请求波段列表 (presentBandsInList_check):', presentBandsInList_check);
-  print('调试 (' + sensorIdentifier + '): 计算出的存在波段数量 (nBandsPresent_check):', nBandsPresent_check);
-  print('调试 (' + sensorIdentifier + '): 总共需要的波段数量 (nBandsRequired_check):', nBandsRequired_check);
+  print('Debug (' + sensorIdentifier + '): filtered bands present in image:', presentBandsInList_check);
+  print('Debug (' + sensorIdentifier + '): computed present band count:', nBandsPresent_check);
+  print('Debug (' + sensorIdentifier + '): total required band count:', nBandsRequired_check);
 
   var allBandsPresent_server_check = ee.Algorithms.If(
     nBandsRequired_check.eq(0),
@@ -331,13 +321,13 @@ function trainAndClassifySVM(imageWithBands, sensorIdentifier, bandsToClassify, 
     nBandsPresent_check.eq(nBandsRequired_check)
   );
 
-  print('波段检查状态 (' + sensorIdentifier + '): 是否所有必需波段都存在? ', allBandsPresent_server_check);
+  print('Band check status (' + sensorIdentifier + '): all required bands present? ', allBandsPresent_server_check);
 
-  // 注意: getInfo() 会强制服务器端计算，如果用在循环或 map 中需要小心。
+  // Note: getInfo() forces server-side computation; use carefully in loops or map.
   if (!allBandsPresent_server_check.getInfo()) { 
-    print('错误 (' + sensorIdentifier + '): 并非所有指定分类波段都存在于影像中。分类跳过。');
-    print('详细错误信息 - 可用波段 (' + sensorIdentifier + '): ', availableBands);
-    print('详细错误信息 - 请求分类波段 (' + sensorIdentifier + '): ', bandsToClassify_ee);
+    print('Error (' + sensorIdentifier + '): not all specified bands exist in the image. Skipping.');
+    print('Detail - available bands (' + sensorIdentifier + '): ', availableBands);
+    print('Detail - requested bands (' + sensorIdentifier + '): ', bandsToClassify_ee);
     return null;
   }
 
@@ -346,79 +336,75 @@ function trainAndClassifySVM(imageWithBands, sensorIdentifier, bandsToClassify, 
   });
   currentTrainingData = currentTrainingData.filter(ee.Filter.neq(ee.List(bandsToClassify).get(0), null));
 
-  print('currentTrainingData 中 lc 的唯一值和数量:', currentTrainingData.aggregate_histogram('lc'));
+  print('currentTrainingData unique lc values and counts:', currentTrainingData.aggregate_histogram('lc'));
 
   if (currentTrainingData.size().lt(10).getInfo()){
-    print('错误 (' + sensorIdentifier + '): 从影像采样后有效训练样本不足。数量: ' + currentTrainingData.size().getInfo());
+    print('Error (' + sensorIdentifier + '): fewer than 10 valid training samples after sampling. Count: ' + currentTrainingData.size().getInfo());
     return null;
   }
 
-  // 这里控制样本划分修改，选用来训练的量和用来测试的量，可以有交集
-  var trainingFraction = 0.8; // 约80%用于训练
-  var testingFraction = 0.4;  // 约40%用于测试 (允许与训练集重叠)
+  // Train/test split (overlap allowed between sets)
+  var trainingFraction = 0.8; // ~80% for training
+  var testingFraction = 0.4;  // ~40% for testing (overlap with training allowed)
 
-  // 为训练集添加随机列并筛选
-  // 使用不同的种子确保随机列的独立性，如果需要可重复的结果
-  var trainingPartition = currentTrainingData.randomColumn('random_split_train', 1) // 添加名为 'random_split_train' 的随机列，种子为1
+  // Add random column for training set and filter
+  var trainingPartition = currentTrainingData.randomColumn('random_split_train', 1)
                                      .filter(ee.Filter.lt('random_split_train', trainingFraction));
 
-  // 为测试集添加随机列并筛选
-  var testingPartition = currentTrainingData.randomColumn('random_split_test', 2) // 添加名为 'random_split_test' 的随机列，种子为2
+  // Add random column for testing set and filter
+  var testingPartition = currentTrainingData.randomColumn('random_split_test', 2)
                                      .filter(ee.Filter.lt('random_split_test', testingFraction));
 
-  print('训练样本分区数量 (' + sensorIdentifier + '):', trainingPartition.size());
-  print('测试样本分区数量 (' + sensorIdentifier + '):', testingPartition.size());
-  // 样本划分修改结束
+  print('Training partition size (' + sensorIdentifier + '):', trainingPartition.size());
+  print('Testing partition size (' + sensorIdentifier + '):', testingPartition.size());
 
 
   if (trainingPartition.size().eq(0).getInfo() || testingPartition.size().eq(0).getInfo()) {
-    print('错误 (' + sensorIdentifier + '): 训练或测试分区在随机划分后为空。请检查样本数据和划分比例。');
+    print('Error (' + sensorIdentifier + '): training or testing partition empty after random split. Check sample data and split fractions.');
     return null;
   }
 
-  //这里控制着SVM的参数，从上到下顺序为核函数、γ、惩罚系数、svm类型、决策
-  //要做回归的话改terminationEpsilon
+  // SVM parameters: kernel, gamma, cost, svm type, decision procedure
+  // For regression, change svmType and uncomment terminationEpsilon
   var svmParameters = {
-    kernelType: 'RBF',//核函数
-    gamma: 1,//γ值
-    cost: 100,//惩罚系数C
-    svmType: 'C_SVC', // svm类型，默认为分类类型
-    decisionProcedure: 'Voting', // 默认为voting
-    //terminationEpsilon: 0.01   // 设置 terminationEpsilon。C_SVC类型分类器用这个会报错，要注释掉，换成EPSILON_SVR 回归类型就可以用
-                               // 对于 C_SVC 分类，此参数可能无效。
+    kernelType: 'RBF',
+    gamma: 1,
+    cost: 100,
+    svmType: 'C_SVC', // default classification type
+    decisionProcedure: 'Voting', // default voting
+    //terminationEpsilon: 0.01   // Uncomment for EPSILON_SVR; C_SVC will error with this
+                                // May be ignored for C_SVC classification.
   };
 
   var classifier = ee.Classifier.libsvm(svmParameters).train({
     features: trainingPartition,
-    classProperty: 'lc',//geometryimports里面调property的，由property决定
+    classProperty: 'lc', // property from geometryimports
     inputProperties: bandsToClassify
   });
-  // SVM 参数修改结束
 
   var classifiedImage = imageWithBands.select(bandsToClassify).classify(classifier).clip(studyRegion.geometry());
 
-  var testResults = testingPartition.classify(classifier); // 使用新的测试集进行精度评估
+  var testResults = testingPartition.classify(classifier); // accuracy assessment on test set
   var confusionMatrix = testResults.errorMatrix('lc', 'classification');
 
-  print('testingPartition 中 lc 的唯一值和数量:', testingPartition.aggregate_histogram('lc'));
-  print('testResults 中 classification 的唯一值和数量:', testResults.aggregate_histogram('classification')); 
+  print('testingPartition unique lc values and counts:', testingPartition.aggregate_histogram('lc'));
+  print('testResults unique classification values and counts:', testResults.aggregate_histogram('classification')); 
 
-  print('★ ' + sensorIdentifier + ' 混淆矩阵:', confusionMatrix);
-  print('★ ' + sensorIdentifier + ' 总体精度:', confusionMatrix.accuracy());
-  print('★ ' + sensorIdentifier + ' Kappa系数:', confusionMatrix.kappa());
+  print('* ' + sensorIdentifier + ' Confusion Matrix:', confusionMatrix);
+  print('* ' + sensorIdentifier + ' Overall Accuracy:', confusionMatrix.accuracy());
+  print('* ' + sensorIdentifier + ' Kappa:', confusionMatrix.kappa());
 
-  Map.addLayer(classifiedImage, {min:1, max:5, palette:['#FF8C00','#0000FF','#008000','#FFFF00','#800080']}, sensorIdentifier + ' 分类结果');
+  Map.addLayer(classifiedImage, {min:1, max:5, palette:['#FF8C00','#0000FF','#008000','#FFFF00','#800080']}, sensorIdentifier + ' Classification');
   return classifiedImage;
 }
 
 var classificationBands = ['Blue','Green','Red','NIR','SWIR1','SWIR2', 'NDVI','EVI','NDWI','NDBI','MNDWI','FVC'];
 
-// 7) 主分类调用函数 (适配Sentinel-2)
-// 在 performSentinel2Classification 函数内部
+// 6) Main classification wrapper (Sentinel-2 adapter)
 function performSentinel2Classification(sensorId, bandsForClf, trainingDataFc, studyAreaGeo, s2ImageDict) {
   var imageObject = s2ImageDict.get(sensorId);
   if (!imageObject) {
-    print('影像为空: ' + sensorId);
+    print('Image is null: ' + sensorId);
     return null;
   }
   var image = ee.Image(imageObject);
@@ -426,43 +412,33 @@ function performSentinel2Classification(sensorId, bandsForClf, trainingDataFc, s
   var bandsForClf_ee = ee.List(bandsForClf);
   var nBandsRequired = bandsForClf_ee.length();
 
-  // 调试打印
-  // print('调试 (调用 ' + sensorId + ' 分类前): 请求分类的波段列表 (bandsForClf_ee):', bandsForClf_ee);
-  // print('调试 (调用 ' + sensorId + ' 分类前): 影像实际可用波段列表 (imageBands):', imageBands);
-  
-  // 修正 nBandsPresent 的计算方式：通过筛选并获取大小
+  // Fixed nBandsPresent: filter and get size
   var presentBandsInList = bandsForClf_ee.filter(
     ee.Filter.inList('item', imageBands)
   );
   var nBandsPresent = presentBandsInList.size();
-  
-  // print('调试 (调用 ' + sensorId + ' 分类前): 计算出的存在波段数量 (nBandsPresent):', nBandsPresent);
-  // print('调试 (调用 ' + sensorId + ' 分类前): 总共需要的波段数量 (nBandsRequired):', nBandsRequired);
 
   var allBandsPresent_server = ee.Algorithms.If(
     nBandsRequired.eq(0),
     ee.Number(1).eq(1), 
     nBandsPresent.eq(nBandsRequired)
   );
-  
-  // print('调用 ' + sensorId + ' 分类前，波段检查状态: ', allBandsPresent_server);
 
   if (!allBandsPresent_server.getInfo()) { 
-    print('无法分类 ' + sensorId + ': 合成影像中未包含所有必需波段。');
-    // 在此打印详细信息
-    print('详细错误信息 - 可用波段 (' + sensorId + '): ', imageBands);
-    print('详细错误信息 - 请求分类波段 (' + sensorId + '): ', bandsForClf_ee);
+    print('Cannot classify ' + sensorId + ': composite image missing required bands.');
+    print('Detail - available bands (' + sensorId + '): ', imageBands);
+    print('Detail - requested bands (' + sensorId + '): ', bandsForClf_ee);
     return null;
   }
   return trainAndClassifySVM(image, sensorId, bandsForClf, trainingDataFc, studyAreaGeo);
 }
 
 
-// 8) 生成年度Sentinel-2影像并分类
-print("生成 " + year + " 年 Sentinel-2 SR 合成影像");
+// 7) Generate annual Sentinel-2 composite and classify
+print('Generating ' + year + ' Sentinel-2 SR composite...');
 var sentinel2_SR_images = getSentinel2SRImage(startDate, cc, CSPLUS_CLEAR_THRESHOLD, CSPLUS_QA_BAND);
 
-print("分类 Sentinel-2 SR 合成影像");
+print('Classifying Sentinel-2 SR composite...');
 var Sentinel2_SR_classified = null;
 if (classNames.size().gt(0).getInfo()){
     Sentinel2_SR_classified = performSentinel2Classification(
@@ -473,12 +449,12 @@ if (classNames.size().gt(0).getInfo()){
                                 sentinel2_SR_images
                               );
 } else {
-    print("跳过分类：未定义训练样本(classNames)或样本集为空。");
+    print('Skip classification: training samples (classNames) undefined or empty.');
 }
 
 
-// 9) 导出分类结果
-var exportFolder = '监督土地分类Sentinel版';
+// 8) Export classification results
+var exportFolder = 'Sentinel_SVM_Classification';
 var yearString = ee.Number(year).format('%04d').getInfo();
 
 if (Sentinel2_SR_classified) {
@@ -496,7 +472,7 @@ if (Sentinel2_SR_classified) {
     maxPixels: 1e13,
     fileFormat: 'GeoTIFF'
   });
-  print("已创建导出任务: " + descriptionBase);
+  print('Export task created: ' + descriptionBase);
 } else {
-  print("没有 " + yearString + " 年的 Sentinel-2 SR 分类影像可供导出。");
+  print('No Sentinel-2 SR classification image available for year ' + yearString + ' to export.');
 }

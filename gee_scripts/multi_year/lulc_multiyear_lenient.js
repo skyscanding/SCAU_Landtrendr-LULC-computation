@@ -1,10 +1,8 @@
 
 // FILE:       lulc_multiyear_lenient.js
-// NOTE:       Chinese comments and print strings were AI-assisted translations.
-// PURPOSE:    Multi-year Landsat SVM LULC pipeline — relaxed/tuned variant.
-// SOURCE:     Originally `国内期刊用LULC_宽松.js` (Chinese: "for domestic
-//             journal, lenient")
-// PERIOD:     2023–2026
+// PURPOSE:    Multi-year Landsat SVM LULC pipeline, relaxed/tuned variant.
+// SOURCE:     Originally a domestic-journal lenient pipeline script.
+// PERIOD:     2023-2026
 // INPUTS:     - Training points: imported via training_samples.js
 //             - AOI:             projects/ee-skyscanding/assets/Final_Reprojected_zxy
 // OUTPUTS:    One best-per-year GeoTIFF to Drive folder `Journal_landsat+SVM`.
@@ -72,7 +70,7 @@ function addAllIndices(image) {
 }
 
 
-// Band normalization — RBF-SVM is scale-sensitive
+// Band normalization ,  RBF-SVM is scale-sensitive
 
 function normalizeImage(image, bands, region) {
   var bandsEE = ee.List(bands);
@@ -118,7 +116,7 @@ print("Total sample count (merged):", classNames.size());
 print("Unique lc values and counts:", classNames.aggregate_histogram('lc'));
 
 
-// Cloud masking — relaxed cirrus handling (same logic as original)
+// Cloud masking ,  relaxed cirrus handling (same logic as original)
 
 function cloudMask(image, sensor) {
   var qa = image.select('QA_PIXEL');
@@ -306,17 +304,17 @@ function trainAndClassifySVM(imageWithBands, sensorIdentifier, bandsToClassify, 
     .filter(ee.Filter.neq(ee.List(bandsToClassify).get(0), null))
     .filter(ee.Filter.neq('lc', null));
 
-  // Check if enough samples survived — needs getInfo() but prevents
+  // Check if enough samples survived ,  needs getInfo() but prevents
   // downstream crash on empty collections
   var sampleCount;
   try {
     sampleCount = currentTrainingData.size().getInfo();
   } catch(e) {
-    print('⚠ ' + sensorIdentifier + ' — failed to count samples: ' + e);
+    print('⚠ ' + sensorIdentifier + ' ,  failed to count samples: ' + e);
     return null;
   }
   if (sampleCount < 10) {
-    print('⚠ ' + sensorIdentifier + ' — only ' + sampleCount +
+    print('⚠ ' + sensorIdentifier + ' ,  only ' + sampleCount +
           ' valid samples after filtering. Skipping.');
     return null;
   }
@@ -343,7 +341,7 @@ function trainAndClassifySVM(imageWithBands, sensorIdentifier, bandsToClassify, 
       inputProperties: bandsToClassify
     });
   } catch(e) {
-    print('⚠ ' + sensorIdentifier + ' — classifier training failed: ' + e);
+    print('⚠ ' + sensorIdentifier + ' ,  classifier training failed: ' + e);
     return null;
   }
 
@@ -365,14 +363,14 @@ function trainAndClassifySVM(imageWithBands, sensorIdentifier, bandsToClassify, 
     print('★ ' + sensorIdentifier + ' Confusion Matrix:', confusionMatrix);
   } catch(e) {
     print('⚠ ' + sensorIdentifier +
-          ' — accuracy evaluation failed (likely no valid data): ' + e);
+          ' ,  accuracy evaluation failed (likely no valid data): ' + e);
     return null;
   }
 
   // Guard against NaN or null returns
   if (oaVal === null || kappaVal === null || isNaN(oaVal) || isNaN(kappaVal)) {
     print('⚠ ' + sensorIdentifier +
-          ' — OA or Kappa returned null/NaN. Skipping.');
+          ' ,  OA or Kappa returned null/NaN. Skipping.');
     return null;
   }
 
@@ -435,7 +433,7 @@ for (var y = startYear; y <= endYear; y++) {
   var sr_dict  = getLandsatSRImage(thisStartDate, cloudThreshold, cc);
   var toa_dict = getLandsatTOAImage(thisStartDate, cloudThreshold, cc);
 
-  // Build sensor list — L89 entries only for 2013+
+  // Build sensor list ,  L89 entries only for 2013+
   var sensorEntries = [
     {key: 'Landsat7_SR',  dict: sr_dict},
     {key: 'Landsat7_TOA', dict: toa_dict}

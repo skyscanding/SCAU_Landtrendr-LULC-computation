@@ -1,11 +1,9 @@
 
 // FILE:       lulc_multiyear_strict.js
-// NOTE:       Chinese comments and print strings were AI-assisted translations.
 // PURPOSE:    Multi-year Landsat SVM LULC pipeline with rigorous quality
-//             controls — intended for journal/publication outputs.
-// SOURCE:     Originally `国内期刊用LULC_严格.js` (Chinese: "for domestic
-//             journal, strict")
-// PERIOD:     2000–2024
+//             controls ,  intended for journal/publication outputs.
+// SOURCE:     Originally a domestic-journal strict pipeline script.
+// PERIOD:     2000-2024
 // INPUTS:     - Training points: imported via training_samples.js
 //             - AOI:             projects/ee-skyscanding/assets/Final_Reprojected_zxy
 // OUTPUTS:    One best-per-year GeoTIFF to Drive folder `Journal_landsat+SVM`:
@@ -14,7 +12,7 @@
 //   - L8/L9 only queried for years >= 2013 (saves needless lookups)
 //   - 3 GLCM texture features from NDVI (Contrast, Entropy, Homogeneity)
 //   - Per-band z-score normalization (RBF-SVM is scale-sensitive)
-//   - Class-balanced sampling — equalizes to the smallest class
+//   - Class-balanced sampling ,  equalizes to the smallest class
 //   - Clean 70/30 train/test split with fixed seed (no overlap)
 //   - Best-per-year selection by (OA + Kappa) composite score
 //   - Skip-export gate: discard if BOTH OA and Kappa below 0.7
@@ -72,7 +70,7 @@ function addTextureFeatures(image) {
 }
 
 
-// [NEW] Class-balanced sampling — equalize to smallest class
+// [NEW] Class-balanced sampling ,  equalize to smallest class
 
 function balanceSamples(samples, classProperty, nClasses) {
   var classList = ee.List.sequence(1, nClasses);
@@ -272,7 +270,7 @@ function getLandsatTOAImage(yearNum, cloudThreshold, region) {
 }
 
 
-// [UPDATED] Classification bands — now includes 3 texture features
+// [UPDATED] Classification bands ,  now includes 3 texture features
 
 var classificationBands = [
   'Blue','Green','Red','NIR','SWIR1','SWIR2',
@@ -314,7 +312,7 @@ function trainAndClassifySVM(imageWithBands, sensorIdentifier, bandsToClassify,
   var trainingPartition = withRandom.filter(ee.Filter.lt('random_split', 0.7));
   var testingPartition  = withRandom.filter(ee.Filter.gte('random_split', 0.7));
 
-  // SVM parameters — adjusted for balanced input
+  // SVM parameters ,  adjusted for balanced input
   var svmParameters = {
     kernelType: 'RBF',
     gamma: 1,
@@ -346,7 +344,7 @@ function trainAndClassifySVM(imageWithBands, sensorIdentifier, bandsToClassify,
     oaVal    = ee.Number(oa).getInfo();
     kappaVal = ee.Number(kappa).getInfo();
   } catch(e) {
-    print('⚠ ' + sensorIdentifier + ' — accuracy evaluation failed: ' + e);
+    print('⚠ ' + sensorIdentifier + ' ,  accuracy evaluation failed: ' + e);
     return null;
   }
 
@@ -363,7 +361,7 @@ function trainAndClassifySVM(imageWithBands, sensorIdentifier, bandsToClassify,
 }
 
 
-// Classification entry point — adds indices + texture
+// Classification entry point ,  adds indices + texture
 
 function LandsatClassify(sensorNameKey, bandsForClassification,
                          trainingSamplesFC, aoiRegion, landsatCompositesDict) {

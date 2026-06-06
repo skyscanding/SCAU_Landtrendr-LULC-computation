@@ -1,4 +1,4 @@
-"""LandTrendr disturbance detection — GEE export driver.
+"""LandTrendr disturbance detection ,  GEE export driver.
 
 Runs the LandTrendr temporal segmentation algorithm on GEE (Landsat NBR
 time series, 2009-2024) and exports YOD / MAG / DUR / MPY rasters for
@@ -124,12 +124,11 @@ def main():
     dur = lt_array.arraySlice(0, 5, 6).arrayProject([1]).arrayFlatten([["dur"]])
     preval = lt_array.arraySlice(0, 6, 7).arrayProject([1]).arrayFlatten([["preval"]])
 
-    mask = (mag.gt(args.mag_threshold)
-            .and(dur.lt(args.dur_threshold))
-            .and(preval.gt(args.preval_threshold)))
+    mask = (mag.gt(args.mag_threshold).And(dur.lt(args.dur_threshold))
+            .And(preval.gt(args.preval_threshold)))
 
     connected = yod.updateMask(mask).connectedPixelCount(11, True)
-    mask = mask.and(connected.gte(args.mmu))
+    mask = mask.And(connected.gte(args.mmu))
 
     yod = yod.updateMask(mask).toInt16().clip(aoi.geometry())
     mag_raw = mag.updateMask(mask).toInt16().clip(aoi.geometry())

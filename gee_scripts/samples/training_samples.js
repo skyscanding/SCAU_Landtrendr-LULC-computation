@@ -12,7 +12,7 @@
 // USAGE:      Paste these `Start of imports` / `End of imports` blocks into
 //             the GEE Code Editor as Geometry Imports, then any of the
 //             classification scripts in this repo will pick them up by name.
-// NOTES:      The `lc` attribute is left empty here — class codes are assigned
+// NOTES:      The `lc` attribute is left empty here ,  class codes are assigned
 //             by `.map(f => f.set('lc', N))` in each consumer script.
 
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/

@@ -1,27 +1,24 @@
 // FILE:       landtrendr_disturbance.js
-// PURPOSE:    LandTrendr temporal segmentation for the Dabaoshan mine area
-//             using the emaprlab LandTrendr GEE module. Detects disturbance
-//             from Landsat NBR time series and exports YOD / MAG / DUR /
-//             MPY rasters for the downstream ecosystem-service pipeline.
-// PERIOD:     2009-2024 (NBR time series), disturbance window adjustable.
-// INPUTS:     AOI: projects/ee-skyscanding/assets/Final_Reprojected_zxy
-// OUTPUTS:    Four GeoTIFFs to Drive:
-//               yod_{start}_{end}.tif      Year of Detection (int16)
-//               mag_NBR_{start}_{end}.tif  NBR Magnitude (float32)
-//               durReclass_{start}_{end}.tif Duration reclassified (int16)
-//               mag_per_year_{start}_{end}.tif Magnitude per Year (float32)
+// PURPOSE:    LandTrendr temporal segmentation with SVM-based disturbance
+//             duration prediction for the Dabaoshan mine area.
+// NOTE:       Tested and can apply SVM training to check sample accuracy,
+//             but not systematically reviewed, still needs periodic adjustment.
 // DEPENDENCY: users/emaprlab/public:Modules/LandTrendr.js
-// PARAMETERS: Max Segments=6, MAG>200, DUR<5, Preval>300, MMU>11
+// INPUTS:     AOI: projects/ee-skyscanding/assets/Final_Reprojected_zxy
+//             Training points: imported via training_samples.js
+// OUTPUTS:    LandTrendr rasters (YOD/MAG/DUR/MPY) + SVM-predicted duration
+//             map to Drive folder `LandTrendr_export`.
+// PERIOD:     2013-2025 (disturbance window)
 // SCALE:      30 m, CRS EPSG:32649
 
 // Study area
 var roi = ee.FeatureCollection("projects/ee-skyscanding/assets/Final_Reprojected_zxy");
 Map.centerObject(roi, 13);
-Map.addLayer(roi, {color: 'yellow'}, 'Study Area');
+Map.addLayer(roi, {color: 'orange'}, 'Study Area');
 
 // Analysis year range
-var startYear = 2009;
-var endYear   = 2024;
+var startYear = 2013;
+var endYear   = 2025;
 
 var startFilter = startYear + '-01-01';
 var endFilter   = endYear   + '-01-01';  // exclusive end date
@@ -53,7 +50,20 @@ var changeParams = {
 // Load the emaprlab LandTrendr module
 var ltgee = require('users/emaprlab/public:Modules/LandTrendr.js');
 
-// Band renaming and cloud masking functions
+// Class definitions
+var water_lc = water.map(function(f){ return f.set('lc', 1); });
+var builtUp_lc = builtUp.map(function(f){ return f.set('lc', 2); });
+var unrestoredLand_lc = unrestoredLand.map(function(f){ return f.set('lc', 3); });
+var restoring_lc = restoring.map(function(f){ return f.set('lc', 4); });
+var stableVegetation_lc = stableVegetation.map(function(f){ return f.set('lc', 5); });
+
+var classNames = water_lc
+  .merge(builtUp_lc)
+  .merge(unrestoredLand_lc)
+  .merge(restoring_lc)
+  .merge(stableVegetation_lc);
+
+// Band rename and cloud mask functions
 
 // Landsat 8 and 9 band rename
 function bandRenameL89(image) {
@@ -152,19 +162,19 @@ function cloudMask8(image) {
   return result;
 }
 
-// Apply cloudMask57 to L5/L7 SR collection for the analysis window
+// Apply cloudMask57 to L5/L7 SR for the analysis window
 var collection57 = ee.ImageCollection('LANDSAT/LT05/C02/T1_L2')
     .filterDate(startFilter, endFilter)
     .map(cloudMask57);
 
-// Apply cloudMask8 to L8 SR collection
+// Apply cloudMask8 to L8 SR
 var collection8 = ee.ImageCollection('LANDSAT/LC08/C02/T1_L2')
     .filterDate(startFilter, endFilter)
     .map(cloudMask8);
 
 var composite8 = collection8.median();
 
-// Preview composite
+// Preview composite (RGB = red, green, blue)
 Map.setCenter(-4.52, 40.29, 7);
 Map.addLayer(
   composite8,
@@ -215,7 +225,7 @@ var durReclass = changeImg.select('dur').expression(
   {d: changeImg.select('dur')}
 ).rename('durReclass');
 
-// Visualize raw magnitude (LandTrendr scaled integer)
+// Visualize raw magnitude
 Map.addLayer(
   changeImg.select(['mag']),
   {min: 200, max: 800, palette: ['#9400D3','#4B0082','#0000FF','#00FF00','#FFFF00','#FF7F00','#FF0000']},
@@ -302,3 +312,167 @@ Export.image.toDrive({
   crs: 'EPSG:32649',
   maxPixels: 1e13
 });
+
+// ================================================================
+// SVM training for disturbance duration prediction (classes 1,2,3)
+// ================================================================
+
+// 1. SVM training function (trains directly from FeatureCollection)
+function trainSVMFromFeatureCollection(trainingDataFC, sensorIdentifier, inputFeatureProperties, classProperty) {
+  if (!trainingDataFC || !(trainingDataFC instanceof ee.FeatureCollection)) {
+    print('Error (' + sensorIdentifier + '): FeatureCollection invalid or wrong type.');
+    return null;
+  }
+  if (trainingDataFC.size().getInfo() === 0) {
+    print('Error (' + sensorIdentifier + '): FeatureCollection is empty.');
+    return null;
+  }
+
+  var inputProps_ee = ee.List(inputFeatureProperties);
+  var firstFeature = trainingDataFC.first();
+  if (!firstFeature) {
+      print('Error (' + sensorIdentifier + '): FeatureCollection.first() returned null despite size > 0.');
+      return null;
+  }
+  
+  var featurePropertiesList = firstFeature.propertyNames();
+  var allPropsPresent = featurePropertiesList.containsAll(inputProps_ee).getInfo();
+  var classPropPresent = featurePropertiesList.contains(classProperty).getInfo();
+
+  if (!allPropsPresent || !classPropPresent) {
+    print('Error (' + sensorIdentifier + '): FeatureCollection missing required feature or class properties.');
+    if (!allPropsPresent) print('  Requested feature properties may not all exist:', inputProps_ee);
+    if (!classPropPresent) print('  Requested class property missing:', classProperty);
+    print('  Actual sample properties:', featurePropertiesList);
+    return null;
+  }
+  
+  print('Debug (' + sensorIdentifier + '): requested feature properties:', inputProps_ee);
+  print('Debug (' + sensorIdentifier + '): class property for training:', classProperty);
+
+  var currentTrainingData = trainingDataFC;
+  print(sensorIdentifier + ' - unique values and counts of target "' + classProperty + '" (before split):', currentTrainingData.aggregate_histogram(classProperty));
+
+  if (currentTrainingData.size().getInfo() < 20){
+    print('Error (' + sensorIdentifier + '): fewer than 20 valid training samples. Count: ' + currentTrainingData.size().getInfo() + '. Skipping.');
+    return null;
+  }
+
+  var trainingFraction = 0.7;
+  currentTrainingData = currentTrainingData.randomColumn('random_split_main', 12345);
+  var trainingPartition = currentTrainingData.filter(ee.Filter.lt('random_split_main', trainingFraction));
+  var testingPartition = currentTrainingData.filter(ee.Filter.gte('random_split_main', trainingFraction));
+
+  print('Training partition size (' + sensorIdentifier + '):', trainingPartition.size());
+  print('Testing partition size (' + sensorIdentifier + '):', testingPartition.size());
+
+  var minSamplesInPartition = 5;
+  if (trainingPartition.size().getInfo() < minSamplesInPartition || testingPartition.size().getInfo() < minSamplesInPartition) {
+    print('Error (' + sensorIdentifier + '): train or test partition has too few samples (need at least ' + minSamplesInPartition + ').');
+    print('Train size: ' + trainingPartition.size().getInfo());
+    print('Test size: ' + testingPartition.size().getInfo());
+    print('Consider increasing initial sample count or checking per-class sample distribution.');
+    return null;
+  }
+
+  var svmParameters = {
+    kernelType: 'RBF', gamma: 0.5, cost: 10,
+    svmType: 'C_SVC', decisionProcedure: 'Voting'
+  };
+
+  print('Training SVM classifier ('+ sensorIdentifier +')...');
+  var classifier = ee.Classifier.libsvm(svmParameters).train({
+    features: trainingPartition,
+    classProperty: classProperty,
+    inputProperties: inputProps_ee
+  });
+  
+  return {
+    classifier: classifier, testingPartition: testingPartition,
+    inputFeaturePropertiesUsed: inputProps_ee, classPropertyUsed: classProperty
+  };
+}
+
+
+// 2. Prepare image for sampling (features + target)
+var bandsForSvmFeatures_Dur_filtered = ['blue','green','red','nir','swir1','swir2','thermal'];
+var targetDurBandName_Dur_filtered = 'target_dur_reclass';
+
+var imageToSampleForDurPrediction_filtered = composite8.select(bandsForSvmFeatures_Dur_filtered)
+                                    .addBands(durReclass.rename(targetDurBandName_Dur_filtered));
+
+print('Image ready for sampling (features from composite8, target = durReclass):', imageToSampleForDurPrediction_filtered);
+
+
+// 3. Create training and testing samples (FeatureCollection), classes 1,2,3 only
+var initialNumPixelsToSample_Dur = 20000; // oversample to allow for class-0 filtering
+print('Planning to sample ' + initialNumPixelsToSample_Dur + ' pixels initially...');
+
+var samplesForAllClasses = imageToSampleForDurPrediction_filtered.sample({
+  region: roi, scale: 30,
+  numPixels: initialNumPixelsToSample_Dur,
+  seed: 42, geometries: false
+});
+
+// Filter out null-valued samples
+var allBandsForFiltering_Dur_filtered = ee.List(bandsForSvmFeatures_Dur_filtered).add(targetDurBandName_Dur_filtered);
+samplesForAllClasses = samplesForAllClasses.filter(ee.Filter.notNull(allBandsForFiltering_Dur_filtered));
+print('After initial sampling, valid sample count (all classes):', samplesForAllClasses.size());
+
+// Filter out class 0, keep only classes 1, 2, and 3
+var samplesForDurPrediction_filtered = samplesForAllClasses
+                                        .filter(ee.Filter.gte(targetDurBandName_Dur_filtered, 1));
+
+print('Final valid sample count for SVM duration prediction (classes 1,2,3 only):', samplesForDurPrediction_filtered.size());
+// Debug: inspect one sample and class histogram
+if (samplesForDurPrediction_filtered.size().getInfo() > 0) {
+  print('Example sample (classes 1,2,3):', samplesForDurPrediction_filtered.first());
+  print('Class distribution (1,2,3):', samplesForDurPrediction_filtered.aggregate_histogram(targetDurBandName_Dur_filtered));
+} else {
+  print('Warning: no samples remain after filtering (classes 1,2,3). Check LandTrendr results or increase initial sample count.');
+}
+
+
+// 4. Train SVM and evaluate (classes 1, 2, 3)
+print('Starting SVM training and evaluation, target: ' + targetDurBandName_Dur_filtered + ' (classes 1,2,3 only)');
+
+var svmDurPredictionAssets_filtered = trainSVMFromFeatureCollection(
+  samplesForDurPrediction_filtered,
+  'SVM_for_DurReclass_123',
+  bandsForSvmFeatures_Dur_filtered,
+  targetDurBandName_Dur_filtered
+);
+
+if (svmDurPredictionAssets_filtered && svmDurPredictionAssets_filtered.classifier && svmDurPredictionAssets_filtered.testingPartition) {
+  var svmDurClassifier_filtered = svmDurPredictionAssets_filtered.classifier;
+  var svmDurTestingData_filtered = svmDurPredictionAssets_filtered.testingPartition;
+  var classPropertyActual_Dur_filtered = svmDurPredictionAssets_filtered.classPropertyUsed;
+
+  print('Evaluating SVM model (classes 1,2,3) on test set (' + svmDurTestingData_filtered.size().getInfo() + ' samples)...');
+  var svmDurValidationResults_filtered = svmDurTestingData_filtered.classify(svmDurClassifier_filtered);
+  var svmDurConfusionMatrix_filtered = svmDurValidationResults_filtered.errorMatrix(classPropertyActual_Dur_filtered, 'classification');
+  
+  print('SVM Disturbance Duration Prediction (classes 1,2,3) - Confusion Matrix:', svmDurConfusionMatrix_filtered);
+  print('SVM Disturbance Duration Prediction (classes 1,2,3) - Overall Accuracy:', svmDurConfusionMatrix_filtered.accuracy());
+  print('SVM Disturbance Duration Prediction (classes 1,2,3) - Kappa:', svmDurConfusionMatrix_filtered.kappa());
+
+  print('Applying SVM to the full study area (predicting classes 1,2,3)...');
+  // Note: classifier trained only on classes 1,2,3; areas originally class 0 will be forced into 1,2,3.
+  var predictedDurImage_filtered = composite8.select(bandsForSvmFeatures_Dur_filtered)
+                                .classify(svmDurClassifier_filtered)
+                                .rename('svm_predicted_dur_123');
+
+  // Visualization (classes 1, 2, 3)
+  var durVizParams_SVM_filtered = {min: 1, max: 3, palette: ['0000FF','00FF00','#FF0000']}; // Blue, Green, Red
+  Map.addLayer(predictedDurImage_filtered.clip(roi), durVizParams_SVM_filtered, 'SVM Predicted Dur (1,2,3 only)');
+
+  var referenceDur0 = durReclass.eq(0); // original class-0 areas
+  var finalCombinedMap = ee.Image(0) // default 0 (no disturbance)
+                           .where(referenceDur0.not(), predictedDurImage_filtered); // use SVM prediction in non-0 areas
+  Map.addLayer(finalCombinedMap.clip(roi),
+               {min:0, max:3, palette: ['#CCCCCC','0000FF','00FF00','#FF0000']}, // Gray=0, Blue=1, Green=2, Red=3
+               'SVM Predicted Dur (Combined 0,1,2,3)');
+
+} else {
+  print('SVM duration prediction (classes 1,2,3) failed. Check sample count and previous error messages.');
+}

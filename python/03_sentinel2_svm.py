@@ -1,6 +1,4 @@
-"""Single-year Sentinel-2 SVM LULC classification — local driver.
-
-Note: Chinese strings in this file were AI-assisted translations.
+"""Single-year Sentinel-2 SVM LULC classification, local driver.
 
 Python translation of `gee_scripts/single_year/sentinel2_svm.js`.
 
@@ -47,7 +45,7 @@ def main():
     parser.add_argument("--restoring-asset", required=True)
     parser.add_argument("--stableveg-asset", required=True)
     parser.add_argument("--output-mode", choices=["local", "drive"], default="local")
-    parser.add_argument("--drive-folder", default="监督土地分类Sentinel版")
+    parser.add_argument("--drive-folder", default="Sentinel_LULC_Classification")
     parser.add_argument("--output-dir", default="../outputs")
     args = parser.parse_args()
 

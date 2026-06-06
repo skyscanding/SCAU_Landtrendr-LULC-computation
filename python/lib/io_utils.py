@@ -1,9 +1,9 @@
-"""Image export helpers — Drive batch export OR direct download to disk.
+"""Image export helpers ,  Drive batch export OR direct download to disk.
 
 GEE doesn't stream arbitrary-sized rasters down to your machine in one
 call; for AOI-sized exports (<= ~32 MB per request, ~10000 px per side)
 you can use `getDownloadURL` for synchronous download. Anything bigger
-goes through Drive via an Export.image.toDrive task — same as in the JS.
+goes through Drive via an Export.image.toDrive task ,  same as in the JS.
 """
 from __future__ import annotations
 

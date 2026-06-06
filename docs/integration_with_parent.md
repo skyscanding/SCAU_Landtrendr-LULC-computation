@@ -2,12 +2,12 @@
 
 This module is intended to live alongside whatever ecosystem-service
 calculation code the parent repo already contains. The classification
-outputs (annual LULC GeoTIFFs in `EPSG:32649`, class codes 1–5) are the
+outputs (annual LULC GeoTIFFs in `EPSG:32649`, class codes 1-5) are the
 primary handoff.
 
 ## Adding the submodule to the parent repo
 
-### Option 1 — vendor the folder directly (simple, recommended)
+### Option 1 ,  vendor the folder directly (simple, recommended)
 
 From the parent repo root:
 
@@ -25,7 +25,7 @@ Pros: a single repo, everything diffs together, no submodule headaches.
 Cons: future updates to `GEE_LULC_SVM` are tied to the parent repo's
 commit history.
 
-### Option 2 — keep `GEE_LULC_SVM` as its own repo and add as a Git submodule
+### Option 2 ,  keep `GEE_LULC_SVM` as its own repo and add as a Git submodule
 
 ```bash
 # In a separate location, init the GEE_LULC_SVM folder as its own repo
@@ -65,7 +65,7 @@ fresh clones, and the parent repo only pins a specific commit.
                   │   GEE classification job      │
                   │             │                 │
                   │             ▼                 │
-                  │   outputs/{year}_*.tif        │  ◀── EPSG:32649, uint8, codes 1–5
+                  │   outputs/{year}_*.tif        │  ◀── EPSG:32649, uint8, codes 1-5
                   └─────────────┬─────────────────┘
                                 │
                                 ▼

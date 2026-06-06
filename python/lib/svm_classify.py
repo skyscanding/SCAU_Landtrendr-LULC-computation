@@ -1,4 +1,4 @@
-"""SVM classification core — z-score normalization, class balancing,
+"""SVM classification core ,  z-score normalization, class balancing,
 training, and accuracy assessment.
 
 Mirrors the JS `normalizeImage`, `balanceSamples`, and
@@ -131,14 +131,14 @@ def train_and_classify_svm(
     if use_balancing:
         samples = balance_samples(samples, "lc", n_classes)
 
-    # Check sample count (forces a server roundtrip — cheap enough here)
+    # Check sample count (forces a server roundtrip ,  cheap enough here)
     try:
         n_samples = samples.size().getInfo()
     except Exception as e:
-        print(f"⚠ {sensor_id} — sample count failed: {e}")
+        print(f"⚠ {sensor_id} ,  sample count failed: {e}")
         return None
     if n_samples < 10:
-        print(f"⚠ {sensor_id} — only {n_samples} samples after filtering, skipping.")
+        print(f"⚠ {sensor_id} ,  only {n_samples} samples after filtering, skipping.")
         return None
 
     # Non-overlapping train/test split with fixed seed
@@ -160,7 +160,7 @@ def train_and_classify_svm(
             inputProperties=bands_to_classify,
         )
     except Exception as e:
-        print(f"⚠ {sensor_id} — classifier training failed: {e}")
+        print(f"⚠ {sensor_id} ,  classifier training failed: {e}")
         return None
 
     classified = (
@@ -177,11 +177,11 @@ def train_and_classify_svm(
         oa = ee.Number(cm.accuracy()).getInfo()
         kappa = ee.Number(cm.kappa()).getInfo()
     except Exception as e:
-        print(f"⚠ {sensor_id} — accuracy evaluation failed: {e}")
+        print(f"⚠ {sensor_id} ,  accuracy evaluation failed: {e}")
         return None
 
     if oa is None or kappa is None:
-        print(f"⚠ {sensor_id} — OA/Kappa came back null.")
+        print(f"⚠ {sensor_id} ,  OA/Kappa came back null.")
         return None
 
     print(f"★ {sensor_id}: OA={oa:.4f}, Kappa={kappa:.4f}")

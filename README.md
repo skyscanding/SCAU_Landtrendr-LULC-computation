@@ -12,7 +12,7 @@ analysis pipeline:
   disturbance rasters (YOD/MAG/DUR/MPY) and classified LULC maps.
 - **[SCAU_ecosystem-service-computation](https://github.com/skyscanding/SCAU_ecosystem-service-computation)**:
   Downstream Python pipeline that ingests those GeoTIFFs and runs the
-  full analysis chain — LULC trends, landscape metrics, InVEST-style
+  full analysis chain ,  LULC trends, landscape metrics, InVEST-style
   ecosystem services, and statistical coupling.
 
 ## What's in here
@@ -141,26 +141,26 @@ A full code review lives in `docs/assessment.md`. Key takeaways:
 
 ### 内容概览
 
-**gee_scripts/** — GEE Code Editor 中直接粘贴运行的 JS 脚本
-- `samples/training_samples.js` — 手标训练样本点（5 类：水体、建设用地、未恢复地、恢复中、稳定植被）和 AOI 边界。
-- `single_year/landsat_svm.js` — Landsat 7/8/9 单年（2014），SR+TOA 中值合成，6 个光谱指数，RBF-SVM 分类。
-- `single_year/sentinel2_svm.js` — Sentinel-2 单年（2018），Cloud Score+ 云掩膜，10 m 分辨率。
-- `multi_year/lulc_multiyear_strict.js` — 多年生产管线（2000-2025），GLCM 纹理、类别均衡、z-score 归一化，按 OA+Kappa 选最优传感器。
-- `multi_year/lulc_multiyear_lenient.js` — 宽松版（2023-2026），无纹理无均衡，gamma=0.1，cost=10。
-- `landtrendr/landtrendr_disturbance.js` — LandTrendr 时间分割（NBR 2009-2024），使用 emaprlab 模块，输出 YOD/MAG/DUR/MPY。
+**gee_scripts/** ,  GEE Code Editor 中直接粘贴运行的 JS 脚本
+- `samples/training_samples.js` ,  手标训练样本点（5 类：水体、建设用地、未恢复地、恢复中、稳定植被）和 AOI 边界。
+- `single_year/landsat_svm.js` ,  Landsat 7/8/9 单年（2014），SR+TOA 中值合成，6 个光谱指数，RBF-SVM 分类。
+- `single_year/sentinel2_svm.js` ,  Sentinel-2 单年（2018），Cloud Score+ 云掩膜，10 m 分辨率。
+- `multi_year/lulc_multiyear_strict.js` ,  多年生产管线（2000-2025），GLCM 纹理、类别均衡、z-score 归一化，按 OA+Kappa 选最优传感器。
+- `multi_year/lulc_multiyear_lenient.js` ,  宽松版（2023-2026），无纹理无均衡，gamma=0.1，cost=10。
+- `landtrendr/landtrendr_disturbance.js` ,  LandTrendr 时间分割（NBR 2009-2024），使用 emaprlab 模块，输出 YOD/MAG/DUR/MPY。
 
-**python/** — 本地 Python 命令行驱动
-- `00_authenticate.py` — 一次性 GEE 认证。
-- `01_load_samples.py` — 从 GEE 资产或本地 GeoJSON 加载训练样本。
-- `02_landsat_svm_multiyear.py` — 严格版多年分类驱动，默认 2000-2025。使用 `--output-name lulc_{year}` 可匹配下游 eco 仓库的文件名约定。
-- `03_sentinel2_svm.py` — Sentinel-2 单年分类驱动。
-- `04_landtrendr_export.py` — LandTrendr 干扰检测与栅格导出驱动。
-- `lib/` — 共享工具库（云掩膜、合成、指数、SVM 分类、IO），每个函数仅定义一次。
-- `notebooks/walkthrough.ipynb` — 端到端 Jupyter 演示。
+**python/** ,  本地 Python 命令行驱动
+- `00_authenticate.py` ,  一次性 GEE 认证。
+- `01_load_samples.py` ,  从 GEE 资产或本地 GeoJSON 加载训练样本。
+- `02_landsat_svm_multiyear.py` ,  严格版多年分类驱动，默认 2000-2025。使用 `--output-name lulc_{year}` 可匹配下游 eco 仓库的文件名约定。
+- `03_sentinel2_svm.py` ,  Sentinel-2 单年分类驱动。
+- `04_landtrendr_export.py` ,  LandTrendr 干扰检测与栅格导出驱动。
+- `lib/` ,  共享工具库（云掩膜、合成、指数、SVM 分类、IO），每个函数仅定义一次。
+- `notebooks/walkthrough.ipynb` ,  端到端 Jupyter 演示。
 
-**docs/** — 安装指南、原始脚本评审、与父仓库集成说明。
-**data/** — 本地训练样本存放处（gitignore）。
-**outputs/** — 分类 GeoTIFF 输出目录（gitignore）。
+**docs/** ,  安装指南、原始脚本评审、与父仓库集成说明。
+**data/** ,  本地训练样本存放处（gitignore）。
+**outputs/** ,  分类 GeoTIFF 输出目录（gitignore）。
 
 ### 两种运行方式
 

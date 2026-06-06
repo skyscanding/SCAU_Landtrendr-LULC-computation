@@ -2,25 +2,25 @@
 
 Two supported input modes:
 
-  1. GEE Geometry Imports — paste the contents of
+  1. GEE Geometry Imports ,  paste the contents of
      gee_scripts/samples/training_samples.js into a notebook cell that
      uses this module after `ee.Initialize()`. Five FeatureCollections
      should be in scope: water, builtUp, unrestoredLand, restoring,
      stableVegetation.
 
-  2. Local Shapefile/GeoJSON — point `--samples-path` at a vector file
+  2. Local Shapefile/GeoJSON ,  point `--samples-path` at a vector file
      with a `class` column whose values are one of:
      'water', 'builtUp', 'unrestoredLand', 'restoring', 'stableVegetation'.
      Useful for keeping samples under version control.
 
 Either way, this module yields the merged FeatureCollection that the
-classification scripts expect (with a numeric `lc` property 1–5).
+classification scripts expect (with a numeric `lc` property 1-5).
 """
 from __future__ import annotations
 
 import ee
 
-# Canonical class code mapping — keep in lockstep with the JS scripts.
+# Canonical class code mapping ,  keep in lockstep with the JS scripts.
 CLASS_CODES: dict[str, int] = {
     "water": 1,
     "built_up": 2,
@@ -77,14 +77,14 @@ def load_samples_from_assets(
 
 
 def summarize(samples: ee.FeatureCollection) -> dict:
-    """Return per-class counts as a plain dict — handy for sanity checks."""
+    """Return per-class counts as a plain dict ,  handy for sanity checks."""
     hist = samples.aggregate_histogram("lc").getInfo()
     code_to_name = {v: k for k, v in CLASS_CODES.items()}
     return {code_to_name.get(int(k), f"unknown({k})"): int(v) for k, v in hist.items()}
 
 
 if __name__ == "__main__":
-    # Quick standalone smoke test — assumes you've authenticated and
+    # Quick standalone smoke test ,  assumes you've authenticated and
     # uploaded class collections as assets matching the paths below.
     import sys
 

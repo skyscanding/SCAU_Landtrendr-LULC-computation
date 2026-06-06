@@ -1,4 +1,4 @@
-"""Multi-year Landsat SVM LULC classification — local driver.
+"""Multi-year Landsat SVM LULC classification ,  local driver.
 
 This is the Python translation of `gee_scripts/multi_year/lulc_multiyear_strict.js`.
 For each year in [START_YEAR, END_YEAR]:
@@ -8,7 +8,7 @@ For each year in [START_YEAR, END_YEAR]:
   4. Evaluate OA and Kappa on a held-out 30% test split.
   5. Pick the best sensor for that year by (OA + Kappa).
   6. Skip export if both metrics are below threshold.
-  7. Export the winner — to local disk by default, optionally to Drive.
+  7. Export the winner ,  to local disk by default, optionally to Drive.
 
 Run from the `python/` directory:
     python 02_landsat_svm_multiyear.py --project YOUR_GCP_PROJECT \\
@@ -132,7 +132,7 @@ def main():
                 results.append(result)
 
         if not results:
-            print(f"✘ Year {year}: all sensors failed — no export.")
+            print(f"✘ Year {year}: all sensors failed ,  no export.")
             continue
 
         results.sort(key=lambda r: r.score, reverse=True)
@@ -141,7 +141,7 @@ def main():
         if best.oa < args.oa_threshold and best.kappa < args.kappa_threshold:
             print(
                 f"✘ Year {year}: best was {best.name} "
-                f"(OA={best.oa:.4f}, Kappa={best.kappa:.4f}) — below threshold."
+                f"(OA={best.oa:.4f}, Kappa={best.kappa:.4f}) ,  below threshold."
             )
             continue
 

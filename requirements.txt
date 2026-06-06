@@ -1,7 +1,7 @@
 # Python dependencies for the GEE_LULC_SVM module.
-# Tested against Python 3.10–3.12.
+# Tested against Python 3.10-3.12.
 
-# Core GEE client — drives the same computation as the JS scripts
+# Core GEE client ,  drives the same computation as the JS scripts
 earthengine-api>=0.1.385
 
 # Local raster + vector handling for downstream analysis
