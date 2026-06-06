@@ -55,16 +55,16 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--project", required=True, help="GCP project for ee.Initialize")
     parser.add_argument("--start-year", type=int, default=2000)
-    parser.add_argument("--end-year", type=int, default=2024)
+    parser.add_argument("--end-year", type=int, default=2025)
     parser.add_argument("--cloud-threshold", type=int, default=20)
     parser.add_argument("--oa-threshold", type=float, default=0.70)
     parser.add_argument("--kappa-threshold", type=float, default=0.70)
     parser.add_argument("--aoi-asset", default=_load_samples.DEFAULT_AOI_ASSET)
     parser.add_argument("--water-asset", required=True)
-    parser.add_argument("--builtup-asset", required=True)
+    parser.add_argument("--built-up-asset", required=True)
     parser.add_argument("--unrestored-asset", required=True)
-    parser.add_argument("--restoring-asset", required=True)
-    parser.add_argument("--stableveg-asset", required=True)
+    parser.add_argument("--recovering-asset", required=True)
+    parser.add_argument("--stable-veg-asset", required=True)
     parser.add_argument(
         "--output-mode",
         choices=["local", "drive"],
@@ -73,6 +73,13 @@ def main():
     )
     parser.add_argument("--drive-folder", default="Journal_landsat+SVM")
     parser.add_argument("--output-dir", default="../outputs")
+    parser.add_argument(
+        "--output-name",
+        default=None,
+        help="Optional output filename pattern. Use {year} placeholder, "
+             "e.g. 'lulc_{year}' to match eco repo convention. "
+             "Default: {year}_{sensor}_Classification_SVM_Best",
+    )
     args = parser.parse_args()
 
     print(f"Initializing GEE with project: {args.project}")
@@ -82,10 +89,10 @@ def main():
     aoi = _load_samples.load_aoi(args.aoi_asset)
     samples = _load_samples.load_samples_from_assets(
         args.water_asset,
-        args.builtup_asset,
+        args.built_up_asset,
         args.unrestored_asset,
-        args.restoring_asset,
-        args.stableveg_asset,
+        args.recovering_asset,
+        args.stable_veg_asset,
     )
     print("Sample summary:", _load_samples.summarize(samples))
 
@@ -143,7 +150,10 @@ def main():
             tag = " ◀ BEST" if r.name == best.name else ""
             print(f"   {r.name}: OA={r.oa:.4f}, Kappa={r.kappa:.4f}{tag}")
 
-        desc = f"{year}_{best.name}_Classification_SVM_Best"
+        if args.output_name:
+            desc = args.output_name.format(year=year)
+        else:
+            desc = f"{year}_{best.name}_Classification_SVM_Best"
         if args.output_mode == "drive":
             export_image_to_drive(
                 best.image.toByte(),

@@ -1,28 +1,36 @@
-# GEE_LULC_SVM
+# SCAU Landtrendr + LULC Computation
 
 SVM-based LULC classification for the Dabaoshan mine-area study, runnable
 both inside the Google Earth Engine Code Editor (JavaScript) and locally
 from Python (driving the same GEE backend).
 
-This module is designed to drop into the
-[`SCAU_ecosystem-service-computation`](https://github.com/skyscanding/SCAU_ecosystem-service-computation)
-repository as a self-contained submodule. The classification outputs here
-feed downstream ecosystem-service computations in the parent repo.
+This repository is one of two sibling repos that together form the full
+analysis pipeline:
+
+- **This repo** (`SCAU_Landtrendr-LULC-computation`): GEE-side LandTrendr
+  disturbance detection and SVM LULC classification, producing annual
+  disturbance rasters (YOD/MAG/DUR/MPY) and classified LULC maps.
+- **[SCAU_ecosystem-service-computation](https://github.com/skyscanding/SCAU_ecosystem-service-computation)**:
+  Downstream Python pipeline that ingests those GeoTIFFs and runs the
+  full analysis chain — LULC trends, landscape metrics, InVEST-style
+  ecosystem services, and statistical coupling.
 
 ## What's in here
 
 **gee_scripts/**: original JS, paste into GEE Code Editor
-- `samples/training_samples.js`: hand-digitized training points (5 classes: water, builtUp, unrestoredLand, restoring, stableVegetation) plus the AOI FeatureCollection. Paste this first to create the Geometry Imports.
+- `samples/training_samples.js`: hand-digitized training points (5 classes: water, built_up, unrestored, recovering, stable_vegetation) plus the AOI FeatureCollection. Paste this first to create the Geometry Imports.
 - `single_year/landsat_svm.js`: Landsat 7/8/9 single year (2014), SR + TOA median composites, 6 spectral indices, RBF-SVM, exports 4 GeoTIFFs.
 - `single_year/sentinel2_svm.js`: Sentinel-2 single year (2018), Cloud Score+ masking, 10 m resolution.
-- `multi_year/lulc_multiyear_strict.js`: production pipeline (2000-2024), GLCM textures, class-balanced sampling, z-score normalization, best per year by OA + Kappa.
+- `multi_year/lulc_multiyear_strict.js`: production pipeline (2000-2025), GLCM textures, class-balanced sampling, z-score normalization, best per year by OA + Kappa.
 - `multi_year/lulc_multiyear_lenient.js`: relaxed variant (2023-2026), no texture or balancing, gamma=0.1, cost=10.
+- `landtrendr/landtrendr_disturbance.js`: LandTrendr temporal segmentation (NBR 2009-2024), exports YOD/MAG/DUR/MPY rasters with disturbance masking.
 
 **python/**: local Python equivalents
 - `00_authenticate.py`: one-time GEE auth helper, opens browser, writes credentials.
 - `01_load_samples.py`: loads training points from GEE assets or local GeoJSON.
-- `02_landsat_svm_multiyear.py`: driver for the strict multi-year pipeline.
+- `02_landsat_svm_multiyear.py`: driver for the strict multi-year LULC pipeline (now 2000-2025 default). Use `--output-name lulc_{year}` for eco repo compatibility.
 - `03_sentinel2_svm.py`: driver for single-year Sentinel-2 classification.
+- `04_landtrendr_export.py`: driver for LandTrendr disturbance detection and raster export.
 - `lib/`: shared helpers: `cloud_mask.py`, `composites.py`, `indices.py`, `io_utils.py`, `svm_classify.py`. Each helper exists exactly once.
 - `notebooks/walkthrough.ipynb`: end-to-end Jupyter demo.
 
@@ -48,7 +56,7 @@ feed downstream ecosystem-service computations in the parent repo.
 3. **Pick and paste a classification script.** Below the imports block, paste one of:
    - `gee_scripts/single_year/landsat_svm.js`: Landsat 7/8/9, single year (2014), 12 bands
    - `gee_scripts/single_year/sentinel2_svm.js`: Sentinel-2, single year (2018), 12 bands
-   - `gee_scripts/multi_year/lulc_multiyear_strict.js`: Landsat, multi-year (2000-2024), 15 features with GLCM textures
+   - `gee_scripts/multi_year/lulc_multiyear_strict.js`: Landsat, multi-year (2000-2025), 15 features with GLCM textures
    - `gee_scripts/multi_year/lulc_multiyear_lenient.js`: Landsat, multi-year (2023-2026), 12 features, tuned hyperparameters
 
 4. **Run the script.** Click **Run**. The console will print composite generation progress, per-sensor SVM accuracy (OA and Kappa), and a per-year best-sensor selection log. Classified layers appear on the map.
@@ -76,13 +84,13 @@ feed downstream ecosystem-service computations in the parent repo.
    ```bash
    python python/02_landsat_svm_multiyear.py \
        --project YOUR_GCP_PROJECT_ID \
-       --start-year 2000 --end-year 2024 \
+       --start-year 2000 --end-year 2025 \
        --aoi-asset projects/ee-skyscanding/assets/Final_Reprojected_zxy \
        --water-asset users/YOU/water \
-       --builtup-asset users/YOU/builtUp \
+       --built-up-asset users/YOU/builtUp \
        --unrestored-asset users/YOU/unrestoredLand \
-       --restoring-asset users/YOU/restoring \
-       --stableveg-asset users/YOU/stableVegetation \
+       --recovering-asset users/YOU/restoring \
+       --stable-veg-asset users/YOU/stableVegetation \
        --output-mode local
    ```
    The script loops through each year, builds composites, adds indices and textures, normalizes, classifies, evaluates accuracy, picks the best sensor, and exports. A progress log prints to stdout with per-year OA and Kappa scores.

@@ -23,10 +23,10 @@ import ee
 # Canonical class code mapping — keep in lockstep with the JS scripts.
 CLASS_CODES: dict[str, int] = {
     "water": 1,
-    "builtUp": 2,
-    "unrestoredLand": 3,
-    "restoring": 4,
-    "stableVegetation": 5,
+    "built_up": 2,
+    "unrestored": 3,
+    "recovering": 4,
+    "stable_vegetation": 5,
 }
 
 # Default AOI asset path from the JS scripts. Override per-call if needed.
@@ -36,8 +36,8 @@ DEFAULT_AOI_ASSET = "projects/ee-skyscanding/assets/Final_Reprojected_zxy"
 def merge_class_collections(
     water: ee.FeatureCollection,
     built_up: ee.FeatureCollection,
-    unrestored_land: ee.FeatureCollection,
-    restoring: ee.FeatureCollection,
+    unrestored: ee.FeatureCollection,
+    recovering: ee.FeatureCollection,
     stable_vegetation: ee.FeatureCollection,
 ) -> ee.FeatureCollection:
     """Tag each per-class FeatureCollection with its `lc` code and merge."""
@@ -47,10 +47,10 @@ def merge_class_collections(
 
     return (
         _tag(water, CLASS_CODES["water"])
-        .merge(_tag(built_up, CLASS_CODES["builtUp"]))
-        .merge(_tag(unrestored_land, CLASS_CODES["unrestoredLand"]))
-        .merge(_tag(restoring, CLASS_CODES["restoring"]))
-        .merge(_tag(stable_vegetation, CLASS_CODES["stableVegetation"]))
+        .merge(_tag(built_up, CLASS_CODES["built_up"]))
+        .merge(_tag(unrestored, CLASS_CODES["unrestored"]))
+        .merge(_tag(recovering, CLASS_CODES["recovering"]))
+        .merge(_tag(stable_vegetation, CLASS_CODES["stable_vegetation"]))
     )
 
 
@@ -63,7 +63,7 @@ def load_samples_from_assets(
     water_asset: str,
     built_up_asset: str,
     unrestored_asset: str,
-    restoring_asset: str,
+    recovering_asset: str,
     stable_veg_asset: str,
 ) -> ee.FeatureCollection:
     """Variant for when each class is uploaded as its own GEE asset."""
@@ -71,7 +71,7 @@ def load_samples_from_assets(
         ee.FeatureCollection(water_asset),
         ee.FeatureCollection(built_up_asset),
         ee.FeatureCollection(unrestored_asset),
-        ee.FeatureCollection(restoring_asset),
+        ee.FeatureCollection(recovering_asset),
         ee.FeatureCollection(stable_veg_asset),
     )
 
