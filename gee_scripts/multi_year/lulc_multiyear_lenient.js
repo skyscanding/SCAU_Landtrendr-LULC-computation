@@ -1,5 +1,6 @@
 
 // FILE:       lulc_multiyear_lenient.js
+// NOTE:       Chinese comments and print strings were AI-assisted translations.
 // PURPOSE:    Multi-year Landsat SVM LULC pipeline — relaxed/tuned variant.
 // SOURCE:     Originally `国内期刊用LULC_宽松.js` (Chinese: "for domestic
 //             journal, lenient")

@@ -1,5 +1,7 @@
 """Single-year Sentinel-2 SVM LULC classification — local driver.
 
+Note: Chinese strings in this file were AI-assisted translations.
+
 Python translation of `gee_scripts/single_year/sentinel2_svm.js`.
 
 Run from the `python/` directory:

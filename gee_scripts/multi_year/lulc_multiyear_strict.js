@@ -1,5 +1,6 @@
 
 // FILE:       lulc_multiyear_strict.js
+// NOTE:       Chinese comments and print strings were AI-assisted translations.
 // PURPOSE:    Multi-year Landsat SVM LULC pipeline with rigorous quality
 //             controls — intended for journal/publication outputs.
 // SOURCE:     Originally `国内期刊用LULC_严格.js` (Chinese: "for domestic

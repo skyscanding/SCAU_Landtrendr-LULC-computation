@@ -132,6 +132,8 @@ A full code review lives in `docs/assessment.md`. Key takeaways:
 
 ## 中文说明
 
+> 以下中文内容由 AI 辅助翻译，如有歧义请以英文原文为准。
+
 本仓库是大宝山矿区生态修复研究的两个兄弟仓库之一，共同构成完整的分析流程：
 
 - **本仓库**（`SCAU_Landtrendr-LULC-computation`）：GEE 端 LandTrendr 干扰检测和 SVM 土地利用分类，输出年度干扰栅格（YOD/MAG/DUR/MPY）和分类 LULC 地图。

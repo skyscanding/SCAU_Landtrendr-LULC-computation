@@ -1,4 +1,5 @@
 // FILE:       landsat_svm.js
+// NOTE:       Chinese comments and print strings were AI-assisted translations.
 // PURPOSE:    Single-year Landsat 7/8/9 SVM LULC classification (SR + TOA).
 // SOURCE:     Originally `Landsat_SVM1.js`
 // INPUTS:     - Training points: imported via training_samples.js

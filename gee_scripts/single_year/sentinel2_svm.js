@@ -1,4 +1,5 @@
 // FILE:       sentinel2_svm.js
+// NOTE:       Chinese comments and print strings were AI-assisted translations.
 // PURPOSE:    Single-year Sentinel-2 SR SVM LULC classification using
 //             Cloud Score+ for cloud masking.
 // SOURCE:     Originally `Sentinel_SVM.js`
