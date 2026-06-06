@@ -130,20 +130,62 @@ A full code review lives in `docs/assessment.md`. Key takeaways:
 - Landsat 7 SLC-off gaps (post-2003) are tolerated by median compositing but may degrade accuracy in 2003-2012. Consider adding Landsat 5 TM for those years.
 - The commented-out GapFill block in `sentinel2_svm.js` (~70 lines) is preserved for reference but not active.
 
+## 中文说明
+
+本仓库是大宝山矿区生态修复研究的两个兄弟仓库之一，共同构成完整的分析流程：
+
+- **本仓库**（`SCAU_Landtrendr-LULC-computation`）：GEE 端 LandTrendr 干扰检测和 SVM 土地利用分类，输出年度干扰栅格（YOD/MAG/DUR/MPY）和分类 LULC 地图。
+- **[SCAU_ecosystem-service-computation](https://github.com/skyscanding/SCAU_ecosystem-service-computation)**：下游 Python 分析管线，读入上述 GeoTIFF 并执行 LULC 趋势、景观格局、InVEST 生态系统服务和统计耦合分析。
+
+### 内容概览
+
+**gee_scripts/** — GEE Code Editor 中直接粘贴运行的 JS 脚本
+- `samples/training_samples.js` — 手标训练样本点（5 类：水体、建设用地、未恢复地、恢复中、稳定植被）和 AOI 边界。
+- `single_year/landsat_svm.js` — Landsat 7/8/9 单年（2014），SR+TOA 中值合成，6 个光谱指数，RBF-SVM 分类。
+- `single_year/sentinel2_svm.js` — Sentinel-2 单年（2018），Cloud Score+ 云掩膜，10 m 分辨率。
+- `multi_year/lulc_multiyear_strict.js` — 多年生产管线（2000-2025），GLCM 纹理、类别均衡、z-score 归一化，按 OA+Kappa 选最优传感器。
+- `multi_year/lulc_multiyear_lenient.js` — 宽松版（2023-2026），无纹理无均衡，gamma=0.1，cost=10。
+- `landtrendr/landtrendr_disturbance.js` — LandTrendr 时间分割（NBR 2009-2024），使用 emaprlab 模块，输出 YOD/MAG/DUR/MPY。
+
+**python/** — 本地 Python 命令行驱动
+- `00_authenticate.py` — 一次性 GEE 认证。
+- `01_load_samples.py` — 从 GEE 资产或本地 GeoJSON 加载训练样本。
+- `02_landsat_svm_multiyear.py` — 严格版多年分类驱动，默认 2000-2025。使用 `--output-name lulc_{year}` 可匹配下游 eco 仓库的文件名约定。
+- `03_sentinel2_svm.py` — Sentinel-2 单年分类驱动。
+- `04_landtrendr_export.py` — LandTrendr 干扰检测与栅格导出驱动。
+- `lib/` — 共享工具库（云掩膜、合成、指数、SVM 分类、IO），每个函数仅定义一次。
+- `notebooks/walkthrough.ipynb` — 端到端 Jupyter 演示。
+
+**docs/** — 安装指南、原始脚本评审、与父仓库集成说明。
+**data/** — 本地训练样本存放处（gitignore）。
+**outputs/** — 分类 GeoTIFF 输出目录（gitignore）。
+
+### 两种运行方式
+
+**A. GEE Code Editor（原始工作流）**
+1. 打开 https://code.earthengine.google.com，新建脚本。
+2. 粘贴 `training_samples.js` 创建 Geometry Imports（5 个 FeatureCollection + AOI）。
+3. 在下方粘贴一个分类脚本（landsat / sentinel2 / strict / lenient / landtrendr）。
+4. 点击 Run，控制台输出合成进度和 SVM 精度（OA、Kappa）。
+5. 在 Tasks 面板启动 Drive 导出任务，GeoTIFF 落入 Google Drive。
+
+**B. 本地 Python（推荐用于可重复运行）**
+1. 安装依赖：`pip install -r requirements.txt`
+2. 认证：`python 00_authenticate.py --project YOUR_PROJECT`
+3. 将训练样本上传为 GEE 资产（首次），注意使用地理坐标系 WGS84。
+4. 运行多年分类：`python 02_landsat_svm_multiyear.py --project ... --start-year 2000 --end-year 2025 --output-mode local`
+5. 输出模式：`--output-mode local` 下载到 `outputs/`（上限 ~32 MiB）；`--output-mode drive` 批量导出到 Drive。
+6. 验证：用 rasterio 打开 GeoTIFF，预期 dtype uint8，类别码 1-5，CRS 默认为 EPSG:32649（韶关 UTM zone 49N，其他区域需修改）。
+
+### 原始脚本简评
+
+**优点**：传感器覆盖全面（L7/8/9 SR+TOA，S2+Cloud Score+）。严格版多年管线达到期刊产出标准：GLCM 纹理、类别均衡、z-score 归一化、70/30 划分、OA+Kappa 最优年筛选，低于 0.7 阈值自动丢弃。
+
+**Python 化改进**：共享工具库消除 JS 中的重复代码；`getInfo()` 仅保留在客户端逻辑必需处；CLI 参数替代硬编码年份和路径。
+
+**已知取舍**：单年脚本训练/测试集可重叠（精度偏乐观）；样本过滤仅检查首波段空值；L7 SLC-off 后（2003+）精度可能下降，建议补充 L5 TM；sentinel2 中 GapFill 代码块保留供参考。
+
 ## License
 
 This project is licensed under a proprietary license with an Academic Evaluation
 Exception for HKU and SCAU. See [LICENSE](./LICENSE) for details.
-
-## 中文说明
-
-本项目基于 Google Earth Engine 平台，使用 SVM（支持向量机，RBF 核）对大宝山矿区
-进行土地利用/土地覆盖（LULC）监督分类。支持 Landsat 7/8/9（SR 与 TOA）和
-Sentinel-2 影像，提供单年与多年两种运行模式。
-
-**多年严格版**（`lulc_multiyear_strict.js`）为期刊产出设计，包含 GLCM 纹理特征、
-类别均衡采样、z-score 归一化和基于 OA+Kappa 的最优年份筛选。
-
-**两种运行方式**：
-- 在 GEE Code Editor 中粘贴 `gee_scripts/` 下的 JS 脚本运行
-- 使用 `python/` 下的 Python 脚本在本地命令行运行，输出 GeoTIFF 至 `outputs/`
